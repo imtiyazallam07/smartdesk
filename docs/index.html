@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartDesk - Project Documentation</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --folder-bg: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .search-container {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            margin-bottom: 30px;
+            background: rgba(248, 250, 252, 0.8);
+            backdrop-filter: blur(8px);
+            padding: 10px 0;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 15px 25px;
+            font-size: 1.1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+        }
+
+        #search-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Tree Styles */
+        .tree-container {
+            margin-top: 20px;
+        }
+
+        .folder-group {
+            margin-bottom: 5px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .folder-header {
+            background: var(--folder-bg);
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            user-select: none;
+            transition: background 0.2s;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 4px;
+        }
+
+        .folder-header:hover {
+            background: #e2e8f0;
+        }
+
+        .folder-icon {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            transition: transform 0.2s;
+        }
+
+        .folder-header.collapsed .folder-icon {
+            transform: rotate(-90deg);
+        }
+
+        .folder-content {
+            padding-left: 20px;
+            border-left: 2px solid var(--border-color);
+            margin-left: 10px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .folder-content.hidden {
+            display: none;
+        }
+
+        /* File Card Styles - Adjusted for Tree */
+        .files-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            padding: 10px 0;
+        }
+
+        .file-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            transition: all 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .file-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 12px -3px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary-color);
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .file-path {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            overflow-wrap: break-word;
+            word-break: break-all;
+        }
+
+        #no-results {
+            display: none;
+            text-align: center;
+            padding: 50px;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .files-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>SmartDesk Docs</h1>
+            <p class="subtitle">Complete Project Documentation Explorer</p>
+        </header>
+
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search files (e.g., 'home', 'attendance', 'provider')..."
+                onkeyup="filterFiles()">
+        </div>
+
+        <div id="no-results">No documentation files match your search.</div>
+
+        <div id="tree-root" class="tree-container">
+            <!-- Tree structure will be generated here -->
+        </div>
+    </div>
+
+    <script>
+        const docs = [
+            "features/attendance/attendance_home.dart.html",
+            "features/attendance/models/attendance.dart.html",
+            "features/attendance/models/subject.dart.html",
+            "features/attendance/models/timetable.dart.html",
+            "features/attendance/providers/attendance_provider.dart.html",
+            "features/attendance/providers/subject_provider.dart.html",
+            "features/attendance/providers/timetable_provider.dart.html",
+            "features/attendance/screens/day_attendance_screen.dart.html",
+            "features/attendance/screens/home_screen.dart.html",
+            "features/attendance/screens/quick_attendance_screen.dart.html",
+            "features/attendance/screens/subject_management_screen.dart.html",
+            "features/attendance/screens/timetable_screen.dart.html",
+            "features/attendance/screens/timetable_setup_screen.dart.html",
+            "features/attendance/services/attendance_notification_service.dart.html",
+            "features/attendance/services/database_helper.dart.html",
+            "features/attendance/services/holiday_service.dart.html",
+            "features/calendar/screens/academic_calendar_screen.dart.html",
+            "features/calendar/screens/calendar_screen.dart.html",
+            "features/curriculum/screens/curriculum_screen.dart.html",
+            "features/home/screens/about_screen.dart.html",
+            "features/home/screens/home_dashboard_screen.dart.html",
+            "features/home/screens/smart_desk_screen.dart.html",
+            "features/library/models/book.dart.html",
+            "features/library/screens/library_screen.dart.html",
+            "features/library/screens/scanner_screen.dart.html",
+            "features/library/services/library_database_helper.dart.html",
+            "features/settings/providers/theme_provider.dart.html",
+            "features/settings/screens/settings_screen.dart.html",
+            "features/todo/models/todo_model.dart.html",
+            "features/todo/screens/add_todo_screen.dart.html",
+            "features/todo/screens/todo_home_screen.dart.html",
+            "features/todo/services/calendar_sync_service.dart.html",
+            "features/todo/services/todo_db_helper.dart.html",
+            "features/todo/services/todo_notification_service.dart.html",
+            "main.html",
+            "models/subject.dart.html",
+            "models/timetable.dart.html",
+            "more_features.dart.html",
+            "shared/widgets/web_view_screen.dart.html",
+            "widgets/dashboard_card_widget.dart.html"
+        ];
+
+        const treeRoot = document.getElementById('tree-root');
+
+        function buildTree(paths) {
+            const root = { children: {}, files: [] };
+            paths.forEach(path => {
+                const parts = path.split('/');
+                let current = root;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    const dir = parts[i];
+                    if (!current.children[dir]) {
+                        current.children[dir] = { children: {}, files: [] };
+                    }
+                    current = current.children[dir];
+                }
+                current.files.push(path);
+            });
+            return root;
+        }
+
+        function createFolderHeader(name) {
+            const header = document.createElement('div');
+            header.className = 'folder-header';
+            header.innerHTML = `
+                <svg class="folder-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                </svg>
+                <span>${name}</span>
+            `;
+            header.onclick = (e) => {
+                header.classList.toggle('collapsed');
+                header.nextElementSibling.classList.toggle('hidden');
+            };
+            return header;
+        }
+
+        function renderTree(node, container, isSearch = false) {
+            // Render directories
+            Object.keys(node.children).sort().forEach(dirName => {
+                const group = document.createElement('div');
+                group.className = 'folder-group';
+
+                const header = createFolderHeader(dirName);
+                const content = document.createElement('div');
+                content.className = 'folder-content';
+
+                // Keep expanded if searching
+                if (isSearch) {
+                    header.classList.remove('collapsed');
+                    content.classList.remove('hidden');
+                }
+
+                group.appendChild(header);
+                group.appendChild(content);
+                container.appendChild(group);
+
+                renderTree(node.children[dirName], content, isSearch);
+
+                // Hide folder if it has no visible files/children after search
+                if (isSearch && content.children.length === 0) {
+                    group.classList.add('hidden');
+                }
+            });
+
+            // Render files
+            if (node.files.length > 0) {
+                const grid = document.createElement('div');
+                grid.className = 'files-grid';
+                node.files.sort().forEach(path => {
+                    const parts = path.split('/');
+                    const fileName = parts[parts.length - 1].replace('.html', '');
+
+                    const card = document.createElement('a');
+                    card.className = 'file-card';
+                    card.href = 'lib/' + path;
+                    card.innerHTML = `
+                        <div class="file-name">${fileName}</div>
+                        <div class="file-path">lib/${path.replace('.html', '')}</div>
+                    `;
+                    grid.appendChild(card);
+                });
+                container.appendChild(grid);
+            }
+        }
+
+        function filterFiles() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            treeRoot.innerHTML = '';
+
+            if (!query) {
+                const fullTree = buildTree(docs);
+                renderTree(fullTree, treeRoot);
+                return;
+            }
+
+            const filteredDocs = docs.filter(path => path.toLowerCase().includes(query));
+            if (filteredDocs.length === 0) {
+                document.getElementById('no-results').style.display = 'block';
+            } else {
+                document.getElementById('no-results').style.display = 'none';
+                const filteredTree = buildTree(filteredDocs);
+                renderTree(filteredTree, treeRoot, true);
+            }
+        }
+
+        // Initial load
+        filterFiles();
+    </script>
+</body>
+
+</html>

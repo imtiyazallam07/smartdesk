@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docs - main.dart</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+
+<body>
+  <div class="doc-wrapper">
+    <header>
+      <a href="../index.html" class="back-link">← Back to Index</a>
+      <h1>main.dart</h1>
+      <div class="file-path">lib/main.dart</div>
+    </header>
+
+    <section class="section">
+      <h2>Overview</h2>
+      <div class="card tech">
+        <span class="card-label">Technical Explanation</span>
+        <p>The <code>main.dart</code> file serves as the <strong>Application Entry Point</strong>. It handles
+          asynchronous initialization of critical services including Workmanager (background tasks), Flutter Local
+          Notifications, and Timezone databases. It configures the global <code>MultiProvider</code> tree to inject
+          state management classes like <code>AttendanceProvider</code> and <code>ThemeProvider</code> throughout the
+          app.</p>
+      </div>
+
+      <div class="card user">
+        <span class="card-label">Layman Explanation</span>
+        <p>Think of this file as the <strong>Main Power Switch</strong> and <strong>Startup Checklist</strong> for the
+          app. Before you see any screens, this file ensures the clock is set correctly, the notification system is
+          ready, and all the app's "brains" are synchronized. Once everything is ready, it launches the first screen you
+          see.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Key Responsibilities</h2>
+      <ul>
+        <li>Initializes high-level Flutter engine bindings.</li>
+        <li>Detects and sets the device's local timezone for accurate reminders.</li>
+        <li>Requests system permissions for notifications and alarms.</li>
+        <li>Wraps the entire application in a <code>MultiProvider</code> to share data between screens.</li>
+      </ul>
+    </section>
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docs - timetable_provider.dart</title>
+    <link rel="stylesheet" href="../../../../style.css">
+</head>
+
+<body>
+    <div class="doc-wrapper">
+        <header>
+            <a href="../../../../index.html" class="back-link">← Back to Index</a>
+            <h1>timetable_provider.dart</h1>
+            <div class="file-path">lib/features/attendance/providers/timetable_provider.dart</div>
+        </header>
+
+        <section class="section">
+            <h2>Overview</h2>
+            <div class="card tech">
+                <span class="card-label">Technical Explanation</span>
+                <p>A <code>ChangeNotifier</code> class that maintains the <strong>Local Schedule State</strong>. It maps
+                    weekday integers to <code>TimeSlot</code> lists and handles all CRUD (Create, Read, Update, Delete)
+                    operations. It ensures that changes are persisted to the database immediately after being updated in
+                    memory.</p>
+            </div>
+
+            <div class="card user">
+                <span class="card-label">Layman Explanation</span>
+                <p>This is the <strong>Schedule Manager</strong>. It's the part of the app that organizes your classes
+                    by day and makes sure they aren't lost when you close the app. When you add a class on Tuesday, this
+                    "brain" remembers it and makes sure it appears correctly every Tuesday.</p>
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

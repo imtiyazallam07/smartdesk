@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docs - attendance_provider.dart</title>
+    <link rel="stylesheet" href="../../../../style.css">
+</head>
+
+<body>
+    <div class="doc-wrapper">
+        <header>
+            <a href="../../../../index.html" class="back-link">← Back to Index</a>
+            <h1>attendance_provider.dart</h1>
+            <div class="file-path">lib/features/attendance/providers/attendance_provider.dart</div>
+        </header>
+
+        <section class="section">
+            <h2>Overview</h2>
+            <div class="card tech">
+                <span class="card-label">Technical Explanation</span>
+                <p>A <code>ChangeNotifier</code> that manages the application's attendance state. It implements an
+                    <strong>In-Memory Cache (HashMap)</strong> for fast O(1) data retrieval during UI rebuilds. It
+                    handles SQLite synchronization via <code>DatabaseHelper</code> and provides complex data
+                    transformations for chart rendering.</p>
+            </div>
+
+            <div class="card user">
+                <span class="card-label">Layman Explanation</span>
+                <p>This is the app's <strong>Attendance Ledger</strong>. It's the brain that remembers every time you
+                    were present or absent. It keeps a copy of your records in "active memory" so the app feels snappy,
+                    and it handles all the math required to show you those colorful progress charts.</p>
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

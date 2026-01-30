@@ -1,0 +1,134 @@
+:root {
+    --primary: #2563eb;
+    --primary-light: #dbeafe;
+    --tech-bg: #fffaf5;
+    --tech-border: #f97316;
+    --tech-text: #7c2d12;
+    --user-bg: #f0fdf4;
+    --user-border: #22c55e;
+    --user-text: #14532d;
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    line-height: 1.6;
+    margin: 0;
+    padding: 40px 20px;
+}
+
+.doc-wrapper {
+    max-width: 850px;
+    margin: 0 auto;
+    background: var(--card-bg);
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+header {
+    margin-bottom: 40px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 20px;
+}
+
+.back-link {
+    display: flex;
+    align-items: center;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+    transition: transform 0.2s;
+}
+
+.back-link:hover {
+    transform: translateX(-5px);
+}
+
+h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0;
+    word-break: break-all;
+}
+
+.file-path {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 8px;
+}
+
+.section {
+    margin-bottom: 40px;
+}
+
+h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-main);
+}
+
+.card {
+    padding: 24px;
+    border-radius: 12px;
+    border-left: 6px solid;
+    margin-bottom: 24px;
+}
+
+.card.tech {
+    background-color: var(--tech-bg);
+    border-color: var(--tech-border);
+}
+
+.card.user {
+    background-color: var(--user-bg);
+    border-color: var(--user-border);
+}
+
+.card-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+}
+
+.tech .card-label { color: var(--tech-border); }
+.user .card-label { color: var(--user-border); }
+
+p { margin: 0 0 16px 0; }
+p:last-child { margin-bottom: 0; }
+
+ul {
+    padding-left: 20px;
+    margin: 0;
+}
+
+li { margin-bottom: 8px; }
+
+code {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    color: var(--primary);
+}
+
+@media (max-width: 640px) {
+    body { padding: 20px 10px; }
+    .doc-wrapper { padding: 24px; }
+    h1 { font-size: 1.75rem; }
+}
