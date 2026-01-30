@@ -4,16 +4,13 @@
 </p>
 
 
-SmartDesk is a Flutter-based mobile application designed to simplify access to important student resources at **ITER (SOA University)**.  
-It collects notices, events, holidays, and curriculum information, and displays them in a clean, material-themed user interface.  
+SmartDesk is a comprehensive academic productivity application designed to help students streamline their college life at ITER (SOA University). From tracking self-attendance and managing library books to setting up interactive timetables and catching up on academic events, SmartDesk puts everything you need in one place.
 
 ---
 
 <p align="center">
   <a href="https://github.com/imtiyazallam07/smartdesk/releases/download/v1.9.0/SmartDesk-v1.9.0.apk"><img src = "screenshots/Download_Android_APK_Badge.webp" width=200></a>
 <p>
-
-SmartDesk is a comprehensive academic productivity application designed to help students streamline their college life. From tracking attendance and managing library books to setting up interactive timetables and catching up on academic events, SmartDesk puts everything you need in one place.
 
 ## ✨ Key Features
 
