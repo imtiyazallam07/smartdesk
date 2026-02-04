@@ -154,7 +154,7 @@ class _CurriculumPageState extends State<CurriculumPage> {
     // Wait, I need to read prefs. I'll read it in async function and store in state.
     
     if (_joiningYear == null || _studentBranch == null) return const SizedBox.shrink();
-
+    if(_joiningYear == 2025 || 2026 == _joiningYear) _joiningYear = 2024;
     // Key format: btech2024
     String key = "btech$_joiningYear";
     
@@ -166,6 +166,7 @@ class _CurriculumPageState extends State<CurriculumPage> {
     }
 
     final List list = data![key];
+
     final personalizedItem = list.firstWhere(
       (item) => item['name'] == _studentBranch,
       orElse: () => null,
