@@ -14,6 +14,7 @@ import '../../library/services/library_database_helper.dart';
 import '../../library/models/book.dart';
 import '../../library/screens/library_screen.dart' show LibraryTrackerScreen;
 import '../../../widgets/dashboard_card_widget.dart';
+import '../../../shared/models/feature.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -142,7 +143,23 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               onRefresh: _loadData,
               child: ListView(
                 children: [
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      "Quick Actions",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildQuickActions(context),
+                  const SizedBox(height: 20),
                   _buildAttendanceWidget(),
                   _buildRecurringTasksWidget(),
                   _buildUpcomingTasksWidget(),
@@ -152,6 +169,124 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    // User requested 4 specific features: Task & Reminder, Attendance Tracker, Library Record Tracker, Show Timetable
+    // Let's use those instead of the placeholder one I wrote above initially to match the prompt exactly.
+    // "show all the 4 features in the similar manner (Task & Reminder, Attendance Tracker, Library Record Tracker, Show Timetable)"
+    
+    final List<Feature> quickFeatures = [
+      Feature(
+        title: 'Tasks & Reminder',
+        icon: Icons.task_alt_rounded,
+        color: const Color(0xFFE91E63),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TodoHomeScreen()),
+        ),
+      ),
+      Feature(
+        title: 'Attendance Tracker',
+        icon: Icons.calendar_today_rounded,
+        color: const Color(0xFF5CB35D),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => HomeScreen()),
+        ),
+      ),
+      Feature(
+        title: 'Library Record Tracker',
+        icon: Icons.menu_book_rounded,
+        color: const Color(0xFFF99014),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => LibraryTrackerScreen()),
+        ),
+      ),
+      Feature(
+        title: 'Show Timetable',
+        icon: Icons.schedule_rounded,
+        color: const Color(0xFF3399FF),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TimetableScreen()),
+        ),
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: quickFeatures.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 2.5,
+        ),
+        itemBuilder: (context, index) {
+          final feature = quickFeatures[index];
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: feature.onTap,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade100, // Card background
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // Icon Container
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: feature.color.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        feature.icon,
+                        color: feature.color,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Title
+                    Expanded(
+                      child: Text(
+                        feature.title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -471,7 +606,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               child: Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Text(
-                  'No urgent tasks',
+                  'No urgent tasks in upcoming 3 days',
                   style: TextStyle(fontSize: 14, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),

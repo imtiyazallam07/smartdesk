@@ -2,13 +2,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 // import 'package:html/parser.dart' as parser;
-import 'package:smartdesk/more_features.dart';
 import 'package:url_launcher/url_launcher.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import '../../calendar/screens/calendar_screen.dart';
 import '../../curriculum/screens/curriculum_screen.dart';
+import '../../settings/screens/settings_screen.dart';
 import 'home_dashboard_screen.dart';
 
 class SmartDesk extends StatefulWidget {
@@ -36,7 +36,7 @@ class SmartDeskState extends State<SmartDesk> {
     if (!mounted) return;
 
     try {
-      String currentVersion = "1.9.0";
+      String currentVersion = "2.0.0";
       final response = await http.get(
         Uri.parse(
           "https://raw.githubusercontent.com/imtiyaz-allam/SmartDesk-backend/refs/heads/main/latest_version.txt",
@@ -159,13 +159,15 @@ class SmartDeskState extends State<SmartDesk> {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.more_horiz, color: Colors.blue[800]),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AllFeaturesScreen()),
-            ),
+            icon: Icon(Icons.settings, color: Colors.blue[800]),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
             onLongPress: () => Fluttertoast.showToast(
-              msg: "All features and Information",
+              msg: "Settings and Profile",
               toastLength: Toast.LENGTH_SHORT,
               gravity: ToastGravity.BOTTOM,
               backgroundColor: Colors.black38,
@@ -173,6 +175,7 @@ class SmartDeskState extends State<SmartDesk> {
               fontSize: 16.0,
             ),
           ),
+
         ],
       ),
       body: pages[_selectedIndex],

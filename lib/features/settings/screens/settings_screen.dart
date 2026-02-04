@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../home/screens/about_screen.dart';
 import '../providers/theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -12,7 +13,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   static const String _prefKeyJoiningYear = 'joining_year';
+  static const String _prefKeyBranch = 'student_branch';
   int? _selectedYear;
+  String? _selectedBranch;
   bool _isLoading = true;
 
   @override
@@ -25,6 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _selectedYear = prefs.getInt(_prefKeyJoiningYear);
+      _selectedBranch = prefs.getString(_prefKeyBranch);
       _isLoading = false;
     });
   }
@@ -34,13 +38,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_prefKeyJoiningYear, _selectedYear!);
+    if (_selectedBranch != null) {
+      await prefs.setString(_prefKeyBranch, _selectedBranch!);
+    }
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Settings saved successfully")),
       );
+      Navigator.pop(context);
     }
-    Navigator.pop(context);
   }
 
   // Calculate current academic year (e.g., 1st Year, 2nd Year)
@@ -53,21 +60,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Academic year usually starts in July/August (Month 7 or 8)
     // Formula: (Current - Joining) + (Month >= 7 ? 1 : 0)
-    // Example: Joined 2023.
-    // June 2024 (Month 6): 2024-2023 = 1. (1st Year)
-    // Aug 2024 (Month 8): 2024-2023 = 1. Plus 1 = 2. (2nd Year)
     
     int academicYear = (currentYear - _selectedYear!);
     if (currentMonth >= 7) {
       academicYear += 1;
-    } else {
-      // If we are in early months (Jan-June), we are still in the academic year started previous calendar year
-      // e.g., Joined 2023. Jan 2024. 2024-2023 = 1. Correct (1st Year).
-      // e.g., Joined 2023. Jan 2025. 2025-2023 = 2. Correct (2nd Year).
-      
-      // Edge case: Current year is same as joining year (e.g. Joined 2026, Date Jan 2026?? Unlikely for academic join)
-      // If Joined 2026, Date Aug 2026 -> 2026-2026 = 0 + 1 = 1st Year.
-    }
+    } 
     
     // Safety check
     if (academicYear <= 0) academicYear = 1;
@@ -83,6 +80,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return "$academicYear$suffix Year";
+  }
+
+  List<String> _getBranchesForYear(int year) {
+    if (year < 2022) {
+      return [
+        "Civil Engineering",
+        "Computer Science and Engineering",
+        "Computer Science and Information Technology",
+        "Electrical and Electronics Engineering",
+        "Electrical Engineering",
+        "Electronics and Communication Engineering",
+        "Mechanical Engineering",
+      ];
+    } else {
+      return [
+        "Civil Engineering",
+        "Computer Science and Engineering",
+        "Computer Science and Information Technology",
+        "CSE (AI and ML)",
+        "CSE (Cybersecurity)",
+        "CSE (Data Science)",
+        "CSE (IoT)",
+        "Electrical and Electronics Engineering",
+        "Electrical Engineering",
+        "Electronics and Communication Engineering",
+        "Mechanical Engineering",
+      ];
+    }
   }
 
   List<int> _generateYearOptions() {
@@ -197,11 +222,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 onChanged: (value) {
                                   setState(() {
                                     _selectedYear = value;
+                                    // Reset branch if year changes as options might change (simplification)
+                                    // Or simply keep it if valid.
+                                    // For safety, let's keep it if it exists in new list, else reset.
+                                    if (_selectedYear != null) {
+                                       final branches = _getBranchesForYear(_selectedYear!);
+                                       if (_selectedBranch != null && !branches.contains(_selectedBranch)) {
+                                         _selectedBranch = null;
+                                       }
+                                    }
                                   });
                                 },
                               ),
                             ),
                           ),
+                          
+                          if (_selectedYear != null) ...[
+                            const SizedBox(height: 16),
+                            const Text("Select Branch:", style: TextStyle(color: Colors.grey)),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade400),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _selectedBranch,
+                                  hint: const Text("Select Branch"),
+                                  isExpanded: true,
+                                  icon: const Icon(Icons.arrow_drop_down),
+                                  items: _getBranchesForYear(_selectedYear!).map((branch) {
+                                    return DropdownMenuItem(
+                                      value: branch,
+                                      child: Text(
+                                        branch, 
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedBranch = value;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+
                           const SizedBox(height: 20),
                           const Divider(),
                           const SizedBox(height: 10),
@@ -230,6 +301,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 20),
+
+                   // APP INFO CARD
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: ListTile(
+                      leading: const Icon(Icons.info_outline_rounded, color: Colors.blue),
+                      title: const Text("App Info & Feedback"),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AboutScreen()),
+                      ),
+                    ),
+                  ),
+
                   const Spacer(),
                   SizedBox(
                     height: 50,

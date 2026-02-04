@@ -4,6 +4,17 @@ import '../providers/timetable_provider.dart';
 import '../models/timetable.dart';
 import '../providers/subject_provider.dart';
 import 'subject_management_screen.dart';
+import 'dart:convert';
+import 'dart:ui' as ui;
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import '../models/subject.dart';
 
 class TimetableScreen extends StatefulWidget {
   const TimetableScreen({super.key});
@@ -19,7 +30,9 @@ class _TimetableScreenState extends State<TimetableScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    int initialIndex = DateTime.now().weekday - 1;
+    if (initialIndex >= 6) initialIndex = 0; // Sunday -> Monday
+    _tabController = TabController(length: 6, vsync: this, initialIndex: initialIndex);
     // Initial fetch
     Future.microtask(() {
       if (mounted) {
@@ -41,6 +54,13 @@ class _TimetableScreenState extends State<TimetableScreen> with SingleTickerProv
       appBar: AppBar(
         title: const Text("Timetable"),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_2),
+            onPressed: () => _showQROptions(context),
+            tooltip: 'Import/Export QR',
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: _days.map((day) => Tab(text: day)).toList(),
@@ -476,5 +496,433 @@ class _TimetableScreenState extends State<TimetableScreen> with SingleTickerProv
     );
   }
 
+  // QR Code Import/Export Methods
+  
+  void _showQROptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.qr_code, color: Colors.blue),
+                title: const Text("Export as QR Code"),
+                subtitle: const Text("Share your timetable"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _exportTimetable();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.qr_code_scanner, color: Colors.green),
+                title: const Text("Import from QR Code"),
+                subtitle: const Text("Scan a timetable QR"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _importTimetable();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
+  void _exportTimetable() async {
+    final provider = Provider.of<TimetableProvider>(context, listen: false);
+    final timetable = provider.timetable;
+    
+    if (timetable.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No timetable to export")),
+      );
+      return;
+    }
+
+    // Convert to JSON format
+    final Map<String, List<Map<String, dynamic>>> exportData = {};
+    
+    timetable.forEach((day, slots) {
+      exportData[day.toString()] = slots.map((slot) {
+        return {
+          'n': slot.subjectName,
+          'a': slot.startTimeHour,
+          'b': slot.endTimeHour,
+        };
+      }).toList();
+    });
+
+    final jsonString = jsonEncode(exportData);
+    
+    // Show QR Code Dialog with Share and Save options
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Export Timetable"),
+        content: Container(
+          width: 280,
+          height: 280,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(16),
+          alignment: Alignment.center,
+          child: QrImageView(
+            data: jsonString,
+            version: QrVersions.auto,
+            size: 260,
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              await _shareQRCode(jsonString);
+            },
+            icon: const Icon(Icons.share),
+            label: const Text("Share"),
+          ),
+          TextButton.icon(
+            onPressed: () async {
+              await _saveQRToGallery(jsonString);
+            },
+            icon: const Icon(Icons.save),
+            label: const Text("Save"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _shareQRCode(String data) async {
+    try {
+      final image = await _generateQRImage(data);
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/timetable_qr.png');
+      await file.writeAsBytes(image);
+      
+      await Share.shareXFiles([XFile(file.path)], text: 'My Timetable QR Code');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Share failed: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveQRToGallery(String data) async {
+    try {
+      final image = await _generateQRImage(data);
+      final result = await ImageGallerySaver.saveImage(
+        Uint8List.fromList(image),
+        quality: 100,
+        name: "timetable_qr_${DateTime.now().millisecondsSinceEpoch}.png",
+      );
+      
+      if (mounted) {
+        if (result['isSuccess'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("QR code saved to gallery!")),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to save QR code")),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Save failed: $e")),
+        );
+      }
+    }
+  }
+
+  Future<Uint8List> _generateQRImage(String data) async {
+    final qrValidationResult = QrValidator.validate(
+      data: data,
+      version: QrVersions.auto,
+      errorCorrectionLevel: QrErrorCorrectLevel.Q,
+    );
+
+    if (qrValidationResult.status == QrValidationStatus.valid) {
+      final qrCode = qrValidationResult.qrCode!;
+      final painter = QrPainter.withQr(
+        qr: qrCode,
+        color: const Color(0xFF000000),
+        emptyColor: const Color(0xFFFFFFFF), // Explicit white for empty modules
+        gapless: true,
+      );
+
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      
+      // Increased size and padding for absolute safety
+      const double imageSize = 1200.0;
+      const double padding = 80.0; // Very large quiet zone
+      const double qrSize = imageSize - (padding * 2);
+      
+      // Fill entire background with opaque white
+      canvas.drawColor(const Color(0xFFFFFFFF), BlendMode.dstOver);
+      // Double check with a rect fill to be sure
+      canvas.drawRect(
+        const Rect.fromLTWH(0, 0, imageSize, imageSize), 
+        Paint()..color = const Color(0xFFFFFFFF)
+      );
+      
+      canvas.save();
+      canvas.translate(padding, padding);
+      
+      painter.paint(canvas, const Size(qrSize, qrSize));
+      
+      canvas.restore();
+      
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(imageSize.toInt(), imageSize.toInt());
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      
+      return byteData!.buffer.asUint8List();
+    }
+
+    throw Exception('Failed to generate QR code');
+  }
+
+  void _importTimetable() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _QRScannerScreen(
+          onScan: (data) async {
+            Navigator.pop(context);
+            await _processImportedData(data);
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _processImportedData(String qrData) async {
+    try {
+      // Validate JSON format
+      final Map<String, dynamic> data = jsonDecode(qrData);
+      
+      // Validate structure
+      bool isValid = true;
+      for (var entry in data.entries) {
+        // Check if key is a number 1-6
+        final dayNum = int.tryParse(entry.key);
+        if (dayNum == null || dayNum < 1 || dayNum > 6) {
+          isValid = false;
+          break;
+        }
+        
+        // Check if value is a list
+        if (entry.value is! List) {
+          isValid = false;
+          break;
+        }
+        
+        // Check each slot has required fields
+        for (var slot in entry.value as List) {
+          if (slot is! Map || !slot.containsKey('n') || !slot.containsKey('a') || !slot.containsKey('b')) {
+            isValid = false;
+            break;
+          }
+        }
+      }
+      
+      if (!isValid) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Invalid QR - Wrong format")),
+          );
+        }
+        return;
+      }
+      
+      final subjectProvider = Provider.of<SubjectProvider>(context, listen: false);
+      final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
+      
+      // Collect all unique subject names
+      final Set<String> allSubjects = {};
+      data.forEach((day, slots) {
+        for (var slot in slots as List) {
+          allSubjects.add(slot['n'] as String);
+        }
+      });
+
+      // Check and create missing subjects
+      final existingSubjects = subjectProvider.subjects.map((s) => s.name).toSet();
+      for (var subjectName in allSubjects) {
+        if (!existingSubjects.contains(subjectName)) {
+          final newSubject = Subject(
+            id: DateTime.now().millisecondsSinceEpoch.toString() + subjectName.hashCode.toString(),
+            name: subjectName,
+          );
+          await subjectProvider.addSubject(newSubject);
+        }
+      }
+
+      // Import slots for each day
+      for (var entry in data.entries) {
+        final dayOfWeek = int.parse(entry.key);
+        final slots = entry.value as List;
+        
+        // Delete existing slots for this day
+        final existingSlots = timetableProvider.getScheduleForDay(dayOfWeek)?.slots ?? [];
+        for (var slot in existingSlots) {
+          await timetableProvider.deleteSlot(slot.id);
+        }
+        
+        // Add new slots
+        for (var slotData in slots) {
+          final slot = TimeSlot(
+            id: DateTime.now().millisecondsSinceEpoch.toString() + dayOfWeek.toString() + slotData['n'].hashCode.toString(),
+            subjectName: slotData['n'],
+            startTimeHour: slotData['a'],
+            startTimeMinute: 0,
+            endTimeHour: slotData['b'],
+            endTimeMinute: 0,
+          );
+          await timetableProvider.addSlot(dayOfWeek, slot);
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Timetable imported successfully!")),
+        );
+      }
+    } on FormatException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Invalid QR - Not valid JSON")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Import failed: $e")),
+        );
+      }
+    }
+  }
+
+}
+
+// QR Scanner Screen  
+class _QRScannerScreen extends StatefulWidget {
+  final Function(String) onScan;
+  
+  const _QRScannerScreen({required this.onScan});
+
+  @override
+  State<_QRScannerScreen> createState() => _QRScannerScreenState();
+}
+
+class _QRScannerScreenState extends State<_QRScannerScreen> {
+  bool _scanned = false;
+  final MobileScannerController _controller = MobileScannerController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      
+      if (image == null) return;
+      
+      // Analyze the image for QR code
+      final BarcodeCapture? capture = await _controller.analyzeImage(image.path);
+      
+      if (capture == null || capture.barcodes.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No QR found in image")),
+          );
+        }
+        return;
+      }
+      
+      final barcode = capture.barcodes.first;
+      if (barcode.rawValue != null) {
+        setState(() => _scanned = true);
+        widget.onScan(barcode.rawValue!);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No QR found in image")),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No QR found in image")),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Scan QR Code"),
+        centerTitle: true,
+      ),
+      body: Stack(
+        children: [
+          MobileScanner(
+            controller: _controller,
+            onDetect: (capture) {
+              if (_scanned) return;
+              
+              final List<Barcode> barcodes = capture.barcodes;
+              for (final barcode in barcodes) {
+                if (barcode.rawValue != null) {
+                  setState(() => _scanned = true);
+                  widget.onScan(barcode.rawValue!);
+                  break;
+                }
+              }
+            },
+          ),
+          Positioned(
+            bottom: 32,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ElevatedButton.icon(
+                onPressed: _pickFromGallery,
+                icon: const Icon(Icons.photo_library),
+                label: const Text("Import from Gallery"),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

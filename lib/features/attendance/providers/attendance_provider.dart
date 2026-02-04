@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/attendance.dart';
 import '../services/database_helper.dart';
+import '../services/attendance_notification_service.dart';
 
 class AttendanceProvider with ChangeNotifier {
   final Map<DateTime, DailyAttendance> _cache = {};
@@ -40,6 +41,10 @@ class AttendanceProvider with ChangeNotifier {
   /// Saves attendance to DB and updates local cache immediately
   Future<void> markAttendance(DailyAttendance attendance) async {
     await DatabaseHelper.instance.markAttendance(attendance);
+    
+    // Cancel the notification for this date if it was scheduled
+    await AttendanceNotificationService.cancelNotificationForDate(attendance.date);
+    
     final key = DateTime(attendance.date.year, attendance.date.month, attendance.date.day);
     _cache[key] = attendance;
     notifyListeners();

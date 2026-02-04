@@ -65,6 +65,14 @@ class AttendanceNotificationService {
         // Skip Holidays
         if (await holidayService.isHoliday(date)) continue;
         
+        // CHECK DATABASE: If attendance already marked, skip notification
+        final existingAttendance = await DatabaseHelper.instance.getAttendance(date);
+        if (existingAttendance != null) {
+          // You might want to check if status is strictly present/absent/holiday, 
+          // but usually existence implies marked.
+          continue; 
+        }
+
         // Generate unique ID based on date (YYYYMMDD)
         final int notificationId = int.parse("${date.year}${date.month.toString().padLeft(2,'0')}${date.day.toString().padLeft(2,'0')}");
         
@@ -120,6 +128,14 @@ class AttendanceNotificationService {
           payload: payloadAttendance,
         );
     }
+  }
+
+  /// Cancels the notification for a specific date.
+  /// Useful when user manually marks attendance.
+  static Future<void> cancelNotificationForDate(DateTime date) async {
+    final int notificationId = int.parse("${date.year}${date.month.toString().padLeft(2,'0')}${date.day.toString().padLeft(2,'0')}");
+    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    await flutterLocalNotificationsPlugin.cancel(notificationId);
   }
 
   /// Show the attendance notification immediately (for testing).

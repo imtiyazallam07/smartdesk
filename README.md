@@ -97,15 +97,11 @@ Stay updated with official college events.
 
 ## 📸 Screenshots
 
-| Home | Timetable | Library Tracker |
-|:---:|:---:|:---:|
-| <img src="screenshots/Home.png"> | <img src="screenshots/Timetable.png"> | <img src="screenshots/Library.png"> |
+| Home | Timetable | Library Tracker | To-Do List |
+|:---:|:---:|:---:|:---:|
+| <img src="screenshots/Home.png"> | <img src="screenshots/Timetable.png"> | <img src="screenshots/Library.png"> | <img src="screenshots/Todo.png"> |
 
-| To-Do List | Academic Calendar | Attendance |
-|:---:|:---:|:---:|
-| <img src="screenshots/Todo.png"> | <img src="screenshots/AcademicCal.png"> |<img src="screenshots/Attendance.png"> |
-
-| Curriculum | Calendar | All Features |
-|:---:|:---:|:---:|
-| <img src="screenshots/Curriculum.png"> | <img src="screenshots/Calendar.png"> |<img src="screenshots/AllFeatures.png"> |
+| Academic Calendar | Attendance | Curriculum | Calendar|
+|:---:|:---:|:---:|:---:|
+| <img src="screenshots/AcademicCal.png"> |<img src="screenshots/Attendance.png"> |<img src="screenshots/Curriculum.png"> | <img src="screenshots/Calendar.png"> |
 

@@ -22,6 +22,9 @@ class _CurriculumPageState extends State<CurriculumPage> {
   Map<String, dynamic>? data;
   bool offline = false;
   late final String cacheKey;
+  
+  int? _joiningYear;
+  String? _studentBranch;
 
   @override
   void initState() {
@@ -53,6 +56,11 @@ class _CurriculumPageState extends State<CurriculumPage> {
   // Load from Internet → Cache → Fallback to Cache
   // -------------------------------------------------------------
   Future<void> loadData() async {
+    // Load User Settings First
+    final prefs = await SharedPreferences.getInstance();
+    _joiningYear = prefs.getInt('joining_year');
+    _studentBranch = prefs.getString('student_branch');
+
     final conn = await Connectivity().checkConnectivity();
 
     if (conn.contains(ConnectivityResult.none)) {
@@ -152,6 +160,66 @@ class _CurriculumPageState extends State<CurriculumPage> {
   // -------------------------------------------------------------
   // UI
   // -------------------------------------------------------------
+
+  Widget _buildPersonalizedViewButton() {
+    if (data == null) return const SizedBox.shrink();
+    
+    // Getting user settings from SharedPrefs directly here or extracting from state
+    // Ideally we should have loaded it. Let's load it in loadData or use a FutureBuilder
+    // For simplicity, let's assume we load it. 
+    // Wait, I need to read prefs. I'll read it in async function and store in state.
+    
+    if (_joiningYear == null || _studentBranch == null) return const SizedBox.shrink();
+
+    // Key format: btech2024
+    String key = "btech$_joiningYear";
+    
+    if (!data!.containsKey(key)) {
+       // Fallback for older/newer years not in JSON
+       // Maybe try to find closest? Or just hide? 
+       // For now, hide if key doesn't exist.
+       return const SizedBox.shrink();
+    }
+
+    final List list = data![key];
+    final personalizedItem = list.firstWhere(
+      (item) => item['name'] == _studentBranch,
+      orElse: () => null,
+    );
+
+    if (personalizedItem == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            elevation: 2,
+          ),
+          icon: const Icon(Icons.auto_awesome),
+          label: Text(
+            "View your ${personalizedItem['name']} Curriculum",
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WebViewScreen(
+                title: personalizedItem['name'],
+                url: personalizedItem["url"],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -165,12 +233,12 @@ class _CurriculumPageState extends State<CurriculumPage> {
             ? Center(
                 child: ListView(
                 children: [
-                  SizedBox(height: 100),
-                  Center(
+                  const SizedBox(height: 100),
+                  const Center(
                       child:
                           Icon(Icons.wifi_off, size: 60, color: Colors.grey)),
-                  SizedBox(height: 20),
-                  Center(child: Text("No notices available offline.")),
+                  const SizedBox(height: 20),
+                  const Center(child: Text("No notices available offline.")),
                 ],
               ))
             : data == null
@@ -178,6 +246,20 @@ class _CurriculumPageState extends State<CurriculumPage> {
                 : ListView(
                     padding: const EdgeInsets.only(bottom: 20),
                     children: [
+                      // Personalized Button
+                      _buildPersonalizedViewButton(),
+                      
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Text(
+                          "All Curriculums",
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey),
+                        ),
+                      ),
+                      
                       if (data!.containsKey("btech2020"))
                         buildTile(
                             "B.Tech Admission Batch 2020", data!["btech2020"]),

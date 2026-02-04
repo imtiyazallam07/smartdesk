@@ -114,15 +114,14 @@ class _CalendarState extends State<Calendar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("SOA Holidays List"),
-      ),
       body: RefreshIndicator(
         onRefresh: _refreshPage,
         child: FutureBuilder<List<dynamic>>(
           future: _holidayFuture,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting && !offline && snapshot.data == null) {
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                !offline &&
+                snapshot.data == null) {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError && snapshot.data == null) {
@@ -172,45 +171,15 @@ class _CalendarState extends State<Calendar> {
       padding: const EdgeInsets.all(8),
       child: Column(
         children: [
-          Table(
-            border: TableBorder.all(color: borderColor),
-            columnWidths: const {
-              0: FlexColumnWidth(1),
-              1: FlexColumnWidth(3),
-              2: FlexColumnWidth(2),
-              3: FlexColumnWidth(2),
-            },
-            children: [
-              TableRow(
-                decoration: BoxDecoration(color: headerBgColor),
-                children: [
-                  _headerCell("Sl. No", headerTextColor),
-                  _headerCell("Name of Festive Days", headerTextColor),
-                  _headerCell("Date", headerTextColor),
-                  _headerCell("Day", headerTextColor),
-                ],
-              ),
-              ...holidays.map((holiday) => TableRow(
-                children: [
-                  _dataCell(holiday["sl"] ?? ""),
-                  _dataCell(holiday["name"] ?? ""),
-                  _dataCell(holiday["date"] ?? ""),
-                  _dataCell(holiday["day"] ?? ""),
-                ],
-              )),
-            ],
+          const Align(
+            alignment: Alignment.center,
+            child: Text(
+              "Academic Calendar",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
           ),
-          const SizedBox(height: 25),
-
           // --- DYNAMIC BUTTON SECTION ---
           if (_joiningYear != null) ...[
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text("Academic Calendar", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              ),
-            ),
             const SizedBox(height: 10),
             _buildDynamicButton(),
             const SizedBox(height: 25),
@@ -221,19 +190,81 @@ class _CalendarState extends State<Calendar> {
             alignment: Alignment.centerLeft,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text("All Academic Calendars", style: TextStyle(fontSize: 18, color: Colors.grey)),
+              child: Text(
+                "All Academic Calendars",
+                style: TextStyle(fontSize: 18, color: Colors.grey),
+              ),
             ),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              _buildYearButton("1st", "https://smartdesk-backend.netlify.app/AcademicCalendar1.json"),
-              _buildYearButton("2nd", "https://smartdesk-backend.netlify.app/AcademicCalendar2.json"),
-              _buildYearButton("3rd", "https://smartdesk-backend.netlify.app/AcademicCalendar3.json"),
-              _buildYearButton("4th", "https://smartdesk-backend.netlify.app/AcademicCalendar4.json"),
+              _buildYearButton(
+                "1st",
+                "https://smartdesk-backend.netlify.app/AcademicCalendar1.json",
+              ),
+              _buildYearButton(
+                "2nd",
+                "https://smartdesk-backend.netlify.app/AcademicCalendar2.json",
+              ),
+              _buildYearButton(
+                "3rd",
+                "https://smartdesk-backend.netlify.app/AcademicCalendar3.json",
+              ),
+              _buildYearButton(
+                "4th",
+                "https://smartdesk-backend.netlify.app/AcademicCalendar4.json",
+              ),
             ],
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 20),
+          const Divider(thickness: 2, indent: 6, endIndent: 6),
+          const Align(
+            alignment: Alignment.center,
+            child: Text(
+              "Holidays List",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Table(
+                border: TableBorder.all(color: borderColor),
+                columnWidths: const {
+                  0: FlexColumnWidth(1),
+                  1: FlexColumnWidth(3),
+                  2: FlexColumnWidth(2),
+                  3: FlexColumnWidth(2),
+                },
+                children: [
+                  TableRow(
+                    decoration: BoxDecoration(color: headerBgColor),
+                    children: [
+                      _headerCell("Sl. No", headerTextColor),
+                      _headerCell("Name of Festive Days", headerTextColor),
+                      _headerCell("Date", headerTextColor),
+                      _headerCell("Day", headerTextColor),
+                    ],
+                  ),
+                  ...holidays.map(
+                    (holiday) => TableRow(
+                      children: [
+                        _dataCell(holiday["sl"] ?? ""),
+                        _dataCell(holiday["name"] ?? ""),
+                        _dataCell(holiday["date"] ?? ""),
+                        _dataCell(holiday["day"] ?? ""),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 25),
         ],
       ),
     );
@@ -242,7 +273,10 @@ class _CalendarState extends State<Calendar> {
   Widget _headerCell(String text, Color color) {
     return Padding(
       padding: const EdgeInsets.all(8),
-      child: Text(text, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+      child: Text(
+        text,
+        style: TextStyle(fontWeight: FontWeight.bold, color: color),
+      ),
     );
   }
 
@@ -266,18 +300,23 @@ class _CalendarState extends State<Calendar> {
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 15),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
           icon: const Icon(Icons.auto_awesome),
-          label: Text("View Your $ordinal Year Academic Calendar",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          label: Text(
+            "View Your $ordinal Year Academic Calendar",
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           onPressed: () {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => AcademicCalendarPage(
                   title: "$ordinal Year Academic Calendar",
-                  url: "https://smartdesk-backend.netlify.app/AcademicCalendar$displayYear.json",
+                  url:
+                      "https://smartdesk-backend.netlify.app/AcademicCalendar$displayYear.json",
                 ),
               ),
             );
@@ -292,7 +331,9 @@ class _CalendarState extends State<Calendar> {
       child: Padding(
         padding: const EdgeInsets.all(4),
         child: ElevatedButton(
-          style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
           onPressed: () {
             Navigator.push(
               context,
