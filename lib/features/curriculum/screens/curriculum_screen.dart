@@ -55,29 +55,16 @@ class _CurriculumPageState extends State<CurriculumPage> {
   // -------------------------------------------------------------
   // Load from Internet → Cache → Fallback to Cache
   // -------------------------------------------------------------
+  // -------------------------------------------------------------
+  // Load from Internet → Cache → Fallback to Cache
+  // -------------------------------------------------------------
   Future<void> loadData() async {
     // Load User Settings First
     final prefs = await SharedPreferences.getInstance();
     _joiningYear = prefs.getInt('joining_year');
     _studentBranch = prefs.getString('student_branch');
 
-    final conn = await Connectivity().checkConnectivity();
-
-    if (conn.contains(ConnectivityResult.none)) {
-      final cached = await loadCachedData();
-      if (cached != null) {
-        setState(() {
-          data = cached;
-          offline = true;
-        });
-      } else {
-        setState(() {
-          data = null;
-          offline = true;
-        });
-      }
-      return;
-    }
+    // Always try to fetch from network first
     try {
       final response = await http.get(Uri.parse(widget.jsonUrl));
 
@@ -90,27 +77,24 @@ class _CurriculumPageState extends State<CurriculumPage> {
           data = json;
           offline = false;
         });
-      } else {
-        final cached = await loadCachedData();
-        if (cached != null) {
-          setState(() {
-            data = cached;
-            offline = true;
-          });
-        } else {
-          setState(() => offline = true);
-        }
+        return; // Success, exit
       }
     } catch (e) {
-      final cached = await loadCachedData();
-      if (cached != null) {
-        setState(() {
-          data = cached;
-          offline = true;
-        });
-      } else {
-        setState(() => offline = true);
-      }
+      // Network failed or other error, ignore and fall through to cache
+    }
+
+    // Fallback to cache
+    final cached = await loadCachedData();
+    if (cached != null) {
+      setState(() {
+        data = cached;
+        offline = true;
+      });
+    } else {
+      setState(() {
+        data = null;
+        offline = true;
+      });
     }
   }
 

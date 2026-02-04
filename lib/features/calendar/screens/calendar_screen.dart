@@ -24,7 +24,7 @@ class _CalendarState extends State<Calendar> {
   @override
   void initState() {
     super.initState();
-    _checkInternet(isInitialLoad: true);
+    _fetchData(isInitialLoad: true);
     _loadUserSettings(); // Load the joining year on start
   }
 
@@ -62,22 +62,24 @@ class _CalendarState extends State<Calendar> {
     return "${year}th";
   }
 
-  Future<void> _checkInternet({bool isInitialLoad = false}) async {
-    final connectivity = await Connectivity().checkConnectivity();
-
-    if (connectivity.contains(ConnectivityResult.none)) {
-      setState(() {
-        offline = true;
-        if (isInitialLoad) {
-          _holidayFuture = _loadFromCacheOrError();
-        }
-      });
-    } else {
-      setState(() {
+  Future<void> _fetchData({bool isInitialLoad = false}) async {
+    // Try network first
+    try {
+      final holidays = await fetchHolidays();
+       setState(() {
         offline = false;
-        _holidayFuture = fetchHolidays();
+        _holidayFuture = Future.value(holidays);
       });
+      return;
+    } catch (e) {
+      // Fallback
     }
+
+    // If network failed, try cache
+    setState(() {
+      offline = true; // tentative, confirmed if cache loads
+      _holidayFuture = _loadFromCacheOrError();
+    });
   }
 
   Future<List<dynamic>> _loadFromCacheOrError() async {
@@ -86,28 +88,25 @@ class _CalendarState extends State<Calendar> {
       final cachedJson = prefs.getString(cacheKey)!;
       return jsonDecode(cachedJson);
     } else {
-      return Future.error("Offline");
+      return Future.error("Offline"); // This causes the "No data" UI
     }
   }
 
   Future<List<dynamic>> fetchHolidays() async {
     const url = "https://smart-desk-backend.vercel.app/holidays.json";
-    try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final prefs = await SharedPreferences.getInstance();
-        prefs.setString(cacheKey, response.body);
-        return jsonDecode(response.body);
-      } else {
-        return _loadFromCacheOrError();
-      }
-    } catch (_) {
-      return _loadFromCacheOrError();
+    // We don't catch here, we let the caller handle it or catch and rethrow
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setString(cacheKey, response.body);
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Failed to load: ${response.statusCode}");
     }
   }
 
   Future<void> _refreshPage() async {
-    await _checkInternet();
+    await _fetchData();
     await _loadUserSettings(); // Refresh the joining year as well
   }
 
