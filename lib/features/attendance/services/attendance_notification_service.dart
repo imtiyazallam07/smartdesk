@@ -122,7 +122,7 @@ class AttendanceNotificationService {
           ),
           // Use absoluteTime since we are calculating specific dates
           uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           // matchDateTimeComponents: DateTimeComponents.time, // REMOVED: We want one-off notifications per ID
           // matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, // REMOVED: We don't want weekly repeat
           payload: payloadAttendance,

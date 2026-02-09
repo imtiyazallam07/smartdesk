@@ -23,6 +23,8 @@ import 'features/attendance/providers/subject_provider.dart';
 import 'features/attendance/services/attendance_notification_service.dart';
 import 'features/attendance/screens/quick_attendance_screen.dart';
 import 'features/settings/providers/theme_provider.dart';
+import 'services/onboarding_service.dart';
+import 'features/onboarding/onboarding_screen.dart';
 
 
 // -----------------------------------------------------------------------------
@@ -93,21 +95,8 @@ void main() async {
     onDidReceiveBackgroundNotificationResponse: _onBackgroundNotificationResponse,
   );
 
-  final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-  flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin>();
-
-  // Request Notification Permissions (Android 13+)
-  await androidImplementation?.requestNotificationsPermission();
-
-  // Request Exact Alarm Permissions (Android 13+)
-  // This is required for zonedSchedule to work exactly at the scheduled time
-  if (androidImplementation != null) {
-    bool? hasPermission = await androidImplementation.canScheduleExactNotifications();
-    if (hasPermission == false) {
-      await androidImplementation.requestExactAlarmsPermission();
-    }
-  }
+  // Note: Notification and alarm permissions are now requested during onboarding
+  // after the user sees the Task & Reminder page
 
   Workmanager().initialize(
     callbackDispatcher,
@@ -224,8 +213,40 @@ class MyApp extends StatelessWidget {
             useMaterial3: true,
           ),
           themeMode: themeProvider.themeMode,
-          home: SmartDesk(),
+          home: const OnboardingWrapper(),
+          routes: {
+            '/home': (context) => const SmartDesk(),
+            '/onboarding': (context) => const OnboardingScreen(),
+          },
         );
+      },
+    );
+  }
+}
+
+/// Wrapper to check onboarding status and show appropriate screen
+class OnboardingWrapper extends StatelessWidget {
+  const OnboardingWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: OnboardingService().isOnboardingCompleted(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        final isCompleted = snapshot.data ?? false;
+        if (isCompleted) {
+          return const SmartDesk();
+        } else {
+          return const OnboardingScreen();
+        }
       },
     );
   }

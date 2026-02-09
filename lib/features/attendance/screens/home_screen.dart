@@ -169,7 +169,18 @@ class _HomeScreenState extends State<HomeScreen> {
           final double percentage = stats['percentage'];
           final int present = stats['present'];
           final int total = stats['total'];
-          final Color themeColor = Colors.primaries[subject.hashCode % Colors.primaries.length];
+          
+          // Determine color based on attendance percentage
+          final Color themeColor;
+          if (percentage >= 80) {
+            themeColor = Colors.green;
+          } else if (percentage >= 75) {
+            themeColor = Colors.amber;
+          } else if (percentage >= 60) {
+            themeColor = Colors.deepOrange;
+          } else {
+            themeColor = Colors.red;
+          }
           
           // Calculate classes required for 75%
           final int classesRequired = percentage >= 75.0

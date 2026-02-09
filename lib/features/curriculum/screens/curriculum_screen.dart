@@ -58,13 +58,38 @@ class _CurriculumPageState extends State<CurriculumPage> {
   // -------------------------------------------------------------
   // Load from Internet → Cache → Fallback to Cache
   // -------------------------------------------------------------
+  // -------------------------------------------------------------
+  // Load from Internet → Cache → Fallback to Cache
+  // -------------------------------------------------------------
   Future<void> loadData() async {
     // Load User Settings First
     final prefs = await SharedPreferences.getInstance();
     _joiningYear = prefs.getInt('joining_year');
     _studentBranch = prefs.getString('student_branch');
 
-    // Always try to fetch from network first
+    // 1. Check if cache is strictly fresh (< 24 hours)
+    final int? lastUpdate = prefs.getInt('${cacheKey}_timestamp');
+    bool isCacheFresh = false;
+    if (lastUpdate != null) {
+      final diff = DateTime.now().millisecondsSinceEpoch - lastUpdate;
+      if (diff < 24 * 60 * 60 * 1000) {
+        isCacheFresh = true;
+      }
+    }
+
+    // 2. If Fresh, load from cache and RETURN (Skip Network)
+    if (isCacheFresh) {
+      final cached = await loadCachedData();
+      if (cached != null) {
+        setState(() {
+          data = cached;
+          offline = false;
+        });
+        return;
+      }
+    }
+
+    // 3. Network Call (If cache is stale, missing, or load failed)
     try {
       final response = await http.get(Uri.parse(widget.jsonUrl));
 
@@ -72,23 +97,29 @@ class _CurriculumPageState extends State<CurriculumPage> {
         final json = jsonDecode(response.body);
 
         await saveCachedData(json);
+        // Update Timestamp ONLY on success
+        await prefs.setInt('${cacheKey}_timestamp', DateTime.now().millisecondsSinceEpoch);
 
         setState(() {
           data = json;
           offline = false;
         });
-        return; // Success, exit
+        return; 
       }
     } catch (e) {
-      // Network failed or other error, ignore and fall through to cache
+      // Network failed
     }
 
-    // Fallback to cache
+    // 4. Fallback to cache (Stale data)
+    // We do NOT update the timestamp here, so it remains "stale" and will try fetch again next time.
     final cached = await loadCachedData();
     if (cached != null) {
       setState(() {
         data = cached;
-        offline = true;
+        // Mark as offline so we know we are operating on potentially stale data? 
+        // Or just keep it true to indicate network issue if desired.
+        // Given current UI logic, offline=true only affects empty state.
+        offline = true; 
       });
     } else {
       setState(() {

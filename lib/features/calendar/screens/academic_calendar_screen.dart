@@ -72,17 +72,42 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage> {
   }
 
   Future<void> _checkConnection({bool isInitialLoad = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // 1. Check Freshness
+    final int? lastUpdate = prefs.getInt('${cacheKey}_timestamp');
+    bool isCacheFresh = false;
+    if (lastUpdate != null) {
+      final diff = DateTime.now().millisecondsSinceEpoch - lastUpdate;
+      if (diff < 24 * 60 * 60 * 1000) {
+        isCacheFresh = true;
+      }
+    }
+
+    // 2. Load Cache if Fresh
+    if (isCacheFresh) {
+       final cached = await loadCachedCalendar();
+       if (cached != null) {
+           setState(() {
+             offline = false;
+             _calendarFuture = Future.value(cached);
+           });
+           return;
+       }
+    }
+
+    // 3. Network Fetch (If Stale or Missing)
     final connectivity = await Connectivity().checkConnectivity();
 
     if (connectivity.contains(ConnectivityResult.none)) {
       setState(() {
         offline = true;
-        if (isInitialLoad) {
-          _calendarFuture = loadCachedCalendar().then((cached) {
+        
+        // Load stale cache if available
+        _calendarFuture = loadCachedCalendar().then((cached) {
             if (cached != null) return cached;
             throw Exception("Offline. No cached data.");
-          });
-        }
+        });
       });
     } else {
       setState(() {
@@ -106,6 +131,11 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage> {
         jsonList.map((json) => CalendarEvent.fromJson(json)).toList();
 
         await saveCachedCalendar(events);
+        
+        // Save Timestamp
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('${cacheKey}_timestamp', DateTime.now().millisecondsSinceEpoch);
+
         return events;
       } else {
         throw Exception("Server Error ${response.statusCode}");

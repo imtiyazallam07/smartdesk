@@ -1,6 +1,6 @@
 // import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+// import 'package:http/http.dart' as http;
 // import 'package:html/parser.dart' as parser;
 import 'package:url_launcher/url_launcher.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +10,8 @@ import '../../calendar/screens/calendar_screen.dart';
 import '../../curriculum/screens/curriculum_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import 'home_dashboard_screen.dart';
+import '../../../services/version_service.dart';
+import '../../../widgets/update_dialog.dart';
 
 class SmartDesk extends StatefulWidget {
   const SmartDesk({super.key});
@@ -20,10 +22,11 @@ class SmartDesk extends StatefulWidget {
 
 class SmartDeskState extends State<SmartDesk> {
   int _selectedIndex = 0;
+  
   @override
   void initState() {
     super.initState();
-    _checkForUpdates();
+    _checkForUpdatesOnStartup();
   }
 
   void _onItemTapped(int index) {
@@ -32,60 +35,33 @@ class SmartDeskState extends State<SmartDesk> {
     });
   }
 
-  Future<void> _checkForUpdates() async {
+  /// Check for updates on app startup (automatic check with 24h rate limit)
+  Future<void> _checkForUpdatesOnStartup() async {
+    if (!mounted) return;
+
+    // Add a small delay to ensure the UI is built
+    await Future.delayed(const Duration(milliseconds: 500));
+
     if (!mounted) return;
 
     try {
-      String currentVersion = "2.0.0";
-      final response = await http.get(
-        Uri.parse(
-          "https://raw.githubusercontent.com/imtiyaz-allam/SmartDesk-backend/refs/heads/main/latest_version.txt",
-        ),
-      );
+      final versionService = VersionService();
+      final updateInfo = await versionService.checkForUpdatesAuto();
 
-      if (response.statusCode == 200) {
-        String serverVersion = response.body.trim();
-        if (currentVersion != serverVersion) {
-          _showVersionMismatchDialog(serverVersion);
-        }
+      if (!mounted) return;
+
+      if (updateInfo != null) {
+        // Show update dialog
+        showDialog(
+          context: context,
+          barrierDismissible: updateInfo.updateType != UpdateType.major,
+          builder: (context) => UpdateDialog(
+            updateInfo: updateInfo,
+          ),
+        );
       }
     } catch (e) {
-      // print("Update check failed: $e");
-    }
-  }
-
-  void _showVersionMismatchDialog(String serverVersion) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => AlertDialog(
-        title: Text("Newer Version Available!"),
-        content: Text(
-          "A newer version ($serverVersion) is available. Would you like to check out the update?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Stay on this version"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _launchUrl(
-                "https://github.com/imtiyazallam07/SmartDesk/releases/download/v$serverVersion/SmartDesk-v$serverVersion.apk",
-              );
-            },
-            child: Text("Check Out"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _launchUrl(String fullLink) async {
-    final Uri url = Uri.parse(fullLink);
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      throw Exception('Could not launch $url');
+      // Silent fail - don't show error to user on startup
     }
   }
 

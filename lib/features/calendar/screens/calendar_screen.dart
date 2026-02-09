@@ -63,9 +63,34 @@ class _CalendarState extends State<Calendar> {
   }
 
   Future<void> _fetchData({bool isInitialLoad = false}) async {
-    // Try network first
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Check Freshness
+    final int? lastUpdate = prefs.getInt('${cacheKey}_timestamp');
+    bool isCacheFresh = false;
+    if (lastUpdate != null) {
+      final diff = DateTime.now().millisecondsSinceEpoch - lastUpdate;
+      if (diff < 24 * 60 * 60 * 1000) {
+        isCacheFresh = true;
+      }
+    }
+
+    // 2. Load Cache if Fresh
+    if (isCacheFresh && prefs.containsKey(cacheKey)) {
+      setState(() {
+        offline = false; 
+        _holidayFuture = _loadFromCacheOrError();
+      });
+      return;
+    }
+
+    // 3. Network Fetch (Stale or Missing)
     try {
       final holidays = await fetchHolidays();
+       
+       // Update Timestamp on Success
+       await prefs.setInt('${cacheKey}_timestamp', DateTime.now().millisecondsSinceEpoch);
+
        setState(() {
         offline = false;
         _holidayFuture = Future.value(holidays);
@@ -75,9 +100,10 @@ class _CalendarState extends State<Calendar> {
       // Fallback
     }
 
-    // If network failed, try cache
+    // 4. Fallback (Stale Cache or Error)
+    // Do NOT update timestamp
     setState(() {
-      offline = true; // tentative, confirmed if cache loads
+      offline = true; 
       _holidayFuture = _loadFromCacheOrError();
     });
   }

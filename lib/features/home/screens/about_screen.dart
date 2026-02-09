@@ -1,9 +1,83 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import '../../../services/version_service.dart';
+import '../../../widgets/update_dialog.dart';
 
-class AboutScreen extends StatelessWidget {
+class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
+
+  @override
+  State<AboutScreen> createState() => _AboutScreenState();
+}
+
+class _AboutScreenState extends State<AboutScreen> {
+  String _version = '...';
+  bool _isCheckingUpdate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    setState(() {
+      _version = packageInfo.version;
+    });
+  }
+
+  Future<void> _checkForUpdates() async {
+    if (_isCheckingUpdate) return;
+
+    setState(() {
+      _isCheckingUpdate = true;
+    });
+
+    try {
+      final versionService = VersionService();
+      final updateInfo = await versionService.checkForUpdatesManual();
+
+      if (!mounted) return;
+
+      setState(() {
+        _isCheckingUpdate = false;
+      });
+
+      if (updateInfo != null) {
+        // Show update dialog
+        showDialog(
+          context: context,
+          builder: (context) => UpdateDialog(
+            updateInfo: updateInfo,
+          ),
+        );
+      } else {
+        // No update available (or rate limited)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You are using the latest version'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isCheckingUpdate = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to check for updates'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
   void _open(String url) async {
     final Uri uri = Uri.parse(url);
@@ -57,7 +131,7 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
             Text(
-              "2.0.0",
+              _version,
               style: TextStyle(
                 color: textColor.withValues(alpha: 0.7),
                 fontSize: 14,
@@ -122,6 +196,18 @@ class AboutScreen extends StatelessWidget {
             const SizedBox(height: 8),
 
             _tile(
+              "Check for updates",
+              textColor,
+              _checkForUpdates,
+              trailing: _isCheckingUpdate
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+            ),
+            _tile(
               "Changelog",
               textColor,
                   () => _open(
@@ -159,15 +245,21 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _tile(String title, Color textColor, VoidCallback onTap) {
+  Widget _tile(String title, Color textColor, VoidCallback onTap, {Widget? trailing}) {
     return InkWell(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Text(
-          title,
-          style: TextStyle(fontSize: 16, color: textColor),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: TextStyle(fontSize: 16, color: textColor),
+            ),
+            if (trailing != null) trailing,
+          ],
         ),
       ),
     );
