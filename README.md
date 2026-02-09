@@ -9,7 +9,7 @@ SmartDesk is a comprehensive academic productivity application designed to help 
 ---
 
 <p align="center">
-  <a href="https://github.com/imtiyazallam07/smartdesk/releases/download/v2.0.0/SmartDesk-v2.1.0.apk"><img src = "screenshots/Download_Android_APK_Badge.webp" width=200></a>
+  <a href="https://github.com/imtiyazallam07/smartdesk/releases/download/v2.1.0/SmartDesk-v2.1.0.apk"><img src = "screenshots/Download_Android_APK_Badge.webp" width=200></a>
 <p>
 
 ## ✨ Key Features
