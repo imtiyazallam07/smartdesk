@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.1.0
+version: 2.2.0
 
 environment:
   sdk: ^3.10.4
@@ -40,18 +40,14 @@ dependencies:
   fl_chart: ^1.1.1
   sqflite: ^2.4.2
   path: ^1.9.1
-
-  # SmartDesk Core Dependencies
   http: ^1.2.0
   html: ^0.15.5
   url_launcher: ^6.3.1
   workmanager: ^0.9.0
   flutter_local_notifications: ^18.0.1
-
-  shared_preferences: ^2.5.1
+  shared_preferences: ^2.5.4
   fluttertoast: ^8.2.10
   timezone: ^0.9.0
-
   flutter_timezone: ^5.0.1
   connectivity_plus: ^6.1.4
   webview_flutter: ^4.10.0
