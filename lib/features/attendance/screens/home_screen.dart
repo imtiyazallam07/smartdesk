@@ -96,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
         focusedDay: _focusedDay,
         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
         calendarFormat: CalendarFormat.month,
+        weekendDays: const [DateTime.sunday],
         headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
         onDaySelected: (selectedDay, focusedDay) {
           setState(() {

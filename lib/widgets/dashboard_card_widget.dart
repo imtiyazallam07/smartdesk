@@ -5,6 +5,7 @@ class DashboardCard extends StatelessWidget {
   final Widget content;
   final VoidCallback onViewAll;
   final IconData? icon;
+  final Color? accentColor;
 
   const DashboardCard({
     super.key,
@@ -12,48 +13,78 @@ class DashboardCard extends StatelessWidget {
     required this.content,
     required this.onViewAll,
     this.icon,
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF111827) : Colors.white;
+    final accent = accentColor ?? Theme.of(context).colorScheme.primary;
+
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with title and "View All" button
+            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
                     if (icon != null) ...[
-                      Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(icon, size: 18, color: accent),
+                      ),
+                      const SizedBox(width: 10),
                     ],
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? const Color(0xFFE5E7EB) : Colors.black87,
+                        letterSpacing: 0.1,
                       ),
                     ),
                   ],
                 ),
                 TextButton(
                   onPressed: onViewAll,
-                  child: const Text('View All'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    foregroundColor: accent,
+                  ),
+                  child: const Text('View All', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
-            const Divider(),
-            const SizedBox(height: 8),
-            // Content area
+            Divider(
+              height: 20,
+              thickness: 1,
+              color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
+            ),
             content,
           ],
         ),

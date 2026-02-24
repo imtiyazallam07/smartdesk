@@ -4,10 +4,12 @@ import '../services/version_service.dart';
 
 class UpdateDialog extends StatelessWidget {
   final UpdateInfo updateInfo;
+  final VoidCallback? onUpdatePressed;
 
   const UpdateDialog({
     super.key,
     required this.updateInfo,
+    this.onUpdatePressed,
   });
 
   void _openChangelog() async {
@@ -49,9 +51,9 @@ class UpdateDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'A new version of SmartDesk is available!',
-            style: const TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 16),
           Row(
@@ -135,6 +137,7 @@ class UpdateDialog extends StatelessWidget {
           ),
           onPressed: () {
             _openChangelog();
+            onUpdatePressed?.call();
             Navigator.of(context).pop();
           },
           child: const Text('Update Now'),
