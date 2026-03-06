@@ -15,6 +15,31 @@ class LibraryNotificationService {
   static const String channelId = 'library_deadlines';
   static const String channelName = 'Library Deadlines';
 
+  static Future<void> initialize() async {
+    const androidChannel = AndroidNotificationChannel(
+      channelId,
+      channelName,
+      description: 'Library book return reminders',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(androidChannel);
+  }
+
+  static Future<void> rescheduleAllBooks() async {
+    final books = await LibraryDatabaseHelper.instance.readAllBooks();
+    for (final book in books) {
+      if (book.isReturned == 0) {
+        await scheduleBookNotifications(book);
+      }
+    }
+  }
+
   static Future<void> scheduleBookNotifications(Book book) async {
     if (book.id == null) return;
 
@@ -32,7 +57,7 @@ class LibraryNotificationService {
     for (var entry in triggers.entries) {
       final int daysBefore = entry.key;
       final int notificationId = entry.value;
-
+      debugPrint("LIBRARY CRON: Checking trigger for $daysBefore days before return ($returnDate)");
       final DateTime triggerDate = returnDate.subtract(Duration(days: daysBefore));
 
       tz.TZDateTime scheduledTime = tz.TZDateTime(
@@ -40,18 +65,15 @@ class LibraryNotificationService {
         triggerDate.year,
         triggerDate.month,
         triggerDate.day,
-        7, 30, // 7:30 AM IST
+        7, 0, // 7:00 AM
       );
 
+      // Skip any trigger time that has already passed (including today's 7 AM).
+      // The notification either already fired correctly, or the window has passed.
       if (scheduledTime.isBefore(now)) {
-        if (scheduledTime.year == now.year &&
-            scheduledTime.month == now.month &&
-            scheduledTime.day == now.day) {
-          scheduledTime = now.add(const Duration(seconds: 10));
-        } else {
-          continue;
-        }
+        continue;
       }
+
 
       try {
         await flutterLocalNotificationsPlugin.zonedSchedule(
@@ -59,7 +81,7 @@ class LibraryNotificationService {
           daysBefore == 0 ? '📚 Return Book Today!' : '⏰ Book Return Reminder',
           daysBefore == 0
               ? 'Return "${book.title}" to the library today.'
-              : '"${book.title}" is due in $daysBefore day${daysBefore > 1 ? 's' : ''}.',
+              : '"${book.title}" is due in $daysBefore day${daysBefore > 1 ? "s" : ""}.',
           scheduledTime,
           const NotificationDetails(
             android: AndroidNotificationDetails(
@@ -74,7 +96,30 @@ class LibraryNotificationService {
           uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         );
       } catch (e) {
-        // print("Error scheduling notification: $e");
+        // Fallback to inexact scheduling if exact alarms are restricted
+        try {
+          await flutterLocalNotificationsPlugin.zonedSchedule(
+            notificationId,
+            daysBefore == 0 ? '📚 Return Book Today!' : '⏰ Book Return Reminder',
+            daysBefore == 0
+                ? 'Return "${book.title}" to the library today.'
+                : '"${book.title}" is due in $daysBefore day${daysBefore > 1 ? "s" : ""}.',
+            scheduledTime,
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                channelId,
+                channelName,
+                channelDescription: 'Library book return reminders',
+                importance: Importance.max,
+                priority: Priority.high,
+              ),
+            ),
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          );
+        } catch (e2) {
+          debugPrint("Failed to schedule library notification fallback: $e2");
+        }
       }
     }
   }
@@ -157,7 +202,8 @@ class _RecordTrackerPageState extends State<RecordTrackerPage> {
           title: const Text("Library Record Tracker", style: TextStyle(fontWeight: FontWeight.bold)),
           centerTitle: true,
           bottom: const TabBar(
-            indicatorColor: Colors.blue,
+            indicatorColor: Color(0xFF22C55E),
+            labelColor: Color(0xFF22C55E),
             tabs: [Tab(text: "Current"), Tab(text: "History")],
           ),
         ),
@@ -171,7 +217,7 @@ class _RecordTrackerPageState extends State<RecordTrackerPage> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () => _showFormBottomSheet(context),
-          backgroundColor: Colors.blue,
+          backgroundColor: const Color(0xFF22C55E),
           child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
@@ -447,7 +493,7 @@ class _RecordTrackerPageState extends State<RecordTrackerPage> {
                     accController,
                     "Accession Number",
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.qr_code_scanner, color: Colors.blueAccent),
+                      icon: const Icon(Icons.qr_code_scanner, color: Colors.greenAccent),
                       onPressed: () async {
                         final result = await Navigator.push(
                           context,
@@ -466,7 +512,7 @@ class _RecordTrackerPageState extends State<RecordTrackerPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 15)),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E), padding: const EdgeInsets.symmetric(vertical: 15)),
                       onPressed: () async {
                         if (titleController.text.isEmpty || selectedReturnDate == null) {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill required fields")));
@@ -544,7 +590,7 @@ Widget _buildDatePicker({required String label, required VoidCallback onTap, req
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF0D1117) : Colors.grey[200],
             borderRadius: BorderRadius.circular(10),
-            border: isFilled ? Border.all(color: Colors.blue.withValues(alpha: 0.5)) : null,
+            border: isFilled ? Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.6)) : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

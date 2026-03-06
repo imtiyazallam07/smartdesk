@@ -62,11 +62,11 @@ class _TodoHomeScreenState extends State<TodoHomeScreen>
             color: Theme.of(context).colorScheme.surface,
             child: TabBar(
               controller: _tabController,
-              labelColor: Theme.of(context).colorScheme.primary,
+              labelColor: const Color(0xFF22C55E),
               unselectedLabelColor: Theme.of(
                 context,
               ).colorScheme.onSurfaceVariant,
-              indicatorColor: Theme.of(context).colorScheme.primary,
+              indicatorColor: const Color(0xFF22C55E),
               tabs: const [
                 Tab(text: 'Repeated'),
                 Tab(text: 'Tasks'), // One-Time

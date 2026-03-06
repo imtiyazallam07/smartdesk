@@ -26,6 +26,9 @@ import 'features/settings/providers/theme_provider.dart';
 import 'services/onboarding_service.dart';
 import 'features/onboarding/onboarding_screen.dart';
 
+import 'features/todo/services/todo_notification_service.dart';
+import 'features/library/screens/library_screen.dart';
+
 
 // -----------------------------------------------------------------------------
 // CONFIGURATION & GLOBALS
@@ -43,8 +46,9 @@ FlutterLocalNotificationsPlugin();
 // Global navigator key for deep linking from notifications
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-// Attendance notification service instance
+// Notification service instances
 late AttendanceNotificationService attendanceNotificationService;
+late TodoNotificationService todoNotificationService;
 
 // -----------------------------------------------------------------------------
 // 1. BACKGROUND WORKER
@@ -72,7 +76,10 @@ void main() async {
   // 2. CONFIGURE LOCAL LOCATION (CRITICAL FIX)
   try {
     final timezoneinfo = await FlutterTimezone.getLocalTimezone();
-    final timeZoneName = timezoneinfo.identifier;
+    var timeZoneName = timezoneinfo.identifier;
+    if (timeZoneName == 'Asia/Calcutta') {
+      timeZoneName = 'Asia/Kolkata';
+    }
     tz.setLocalLocation(tz.getLocation(timeZoneName));
     // print("Local Timezone set to: $timeZoneName");
   } catch (e) {
@@ -116,7 +123,30 @@ void main() async {
   attendanceNotificationService = AttendanceNotificationService(flutterLocalNotificationsPlugin);
   await attendanceNotificationService.initialize();
 
+  // Initialize todo and library notifications
+  todoNotificationService = TodoNotificationService(flutterLocalNotificationsPlugin);
+  await todoNotificationService.initialize();
+  await LibraryNotificationService.initialize();
+
   HttpOverrides.global = MyHttpOverrides();
+
+  // ── Suppress a known Flutter framework race condition ──────────────────────
+  // When a bottom sheet animates out while the software keyboard is
+  // showing/hiding, _HighlightModeManager fires a key-mode notification to
+  // InkWell widgets that are already deactivated. Flutter throws a debug
+  // assertion, but this is a framework-level issue that does NOT crash release
+  // builds. We filter it here so it doesn't pollute the console.
+  final void Function(FlutterErrorDetails)? originalOnError = FlutterError.onError;
+  FlutterError.onError = (FlutterErrorDetails details) {
+    final String summary = details.exceptionAsString();
+    final String stack   = details.stack?.toString() ?? '';
+    final bool isHighlightManagerBug =
+        summary.contains('deactivated widget') &&
+        stack.contains('_HighlightModeManager');
+    if (isHighlightManagerBug) return; // safe to ignore
+    // Forward all other errors normally
+    (originalOnError ?? FlutterError.presentError)(details);
+  };
 
   runApp(
     MultiProvider(

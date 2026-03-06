@@ -1,6 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:intl/intl.dart';
 import '../models/attendance.dart';
 import 'database_helper.dart';
 import 'holiday_service.dart';
@@ -53,17 +53,26 @@ class AttendanceNotificationService {
     }
 
     final holidayService = HolidayService();
+    // Load holidays from cache ONCE before the loop (avoids re-reading
+    // SharedPreferences on every iteration, and ensures holidays are
+    // correctly applied even when the cache is populated asynchronously).
+    final Set<DateTime> holidays = await holidayService.getHolidays();
+
     final now = DateTime.now();
     final tz.TZDateTime tzNow = tz.TZDateTime.now(tz.local);
 
     for (int i = 0; i < 30; i++) {
         final date = now.add(Duration(days: i));
-        
+        final normalizedDate = DateTime(date.year, date.month, date.day);
+
         // Skip Sundays
         if (date.weekday == DateTime.sunday) continue;
-        
-        // Skip Holidays
-        if (await holidayService.isHoliday(date)) continue;
+
+        // Skip Holidays (checked against the already-loaded cache set)
+        if (holidays.any((h) =>
+            h.year == normalizedDate.year &&
+            h.month == normalizedDate.month &&
+            h.day == normalizedDate.day)) continue;
         
         // CHECK DATABASE: If attendance already marked, skip notification
         final existingAttendance = await DatabaseHelper.instance.getAttendance(date);
@@ -89,44 +98,85 @@ class AttendanceNotificationService {
         // If the time has already passed for today, skips scheduling for today
         if (scheduledDate.isBefore(tzNow)) continue;
 
-        await _notificationsPlugin.zonedSchedule(
-          notificationId,
-          'Mark Your Attendance',
-          'Did you attend your classes today?',
-          scheduledDate,
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              _channelId,
-              _channelName,
-              channelDescription: _channelDescription,
-              importance: Importance.max,
-              priority: Priority.high,
-              ongoing: false,
-              autoCancel: true,
-              category: AndroidNotificationCategory.reminder,
-              actions: <AndroidNotificationAction>[
-                AndroidNotificationAction(
-                  actionPresent,
-                  'Present',
-                  showsUserInterface: false,
-                  cancelNotification: true,
-                ),
-                AndroidNotificationAction(
-                  actionAbsent,
-                  'Absent',
-                  showsUserInterface: false,
-                  cancelNotification: true,
-                ),
-              ],
+        try {
+          await _notificationsPlugin.zonedSchedule(
+            notificationId,
+            'Mark Your Attendance',
+            'Did you attend your classes today?',
+            scheduledDate,
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                _channelId,
+                _channelName,
+                channelDescription: _channelDescription,
+                importance: Importance.max,
+                priority: Priority.high,
+                ongoing: false,
+                autoCancel: true,
+                category: AndroidNotificationCategory.reminder,
+                actions: <AndroidNotificationAction>[
+                  AndroidNotificationAction(
+                    actionPresent,
+                    'Present',
+                    showsUserInterface: false,
+                    cancelNotification: true,
+                  ),
+                  AndroidNotificationAction(
+                    actionAbsent,
+                    'Absent',
+                    showsUserInterface: false,
+                    cancelNotification: true,
+                  ),
+                ],
+              ),
             ),
-          ),
-          // Use absoluteTime since we are calculating specific dates
-          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-          // matchDateTimeComponents: DateTimeComponents.time, // REMOVED: We want one-off notifications per ID
-          // matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, // REMOVED: We don't want weekly repeat
-          payload: payloadAttendance,
-        );
+            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            payload: payloadAttendance,
+          );
+        } catch (e) {
+          debugPrint("Failed to schedule exact alarm for attendance, falling back to inexact: $e");
+          try {
+            await _notificationsPlugin.zonedSchedule(
+              notificationId,
+              'Mark Your Attendance',
+              'Did you attend your classes today?',
+              scheduledDate,
+              const NotificationDetails(
+                android: AndroidNotificationDetails(
+                  _channelId,
+                  _channelName,
+                  channelDescription: _channelDescription,
+                  importance: Importance.max,
+                  priority: Priority.high,
+                  ongoing: false,
+                  autoCancel: true,
+                  category: AndroidNotificationCategory.reminder,
+                  actions: <AndroidNotificationAction>[
+                    AndroidNotificationAction(
+                      actionPresent,
+                      'Present',
+                      showsUserInterface: false,
+                      cancelNotification: true,
+                    ),
+                    AndroidNotificationAction(
+                      actionAbsent,
+                      'Absent',
+                      showsUserInterface: false,
+                      cancelNotification: true,
+                    ),
+                  ],
+                ),
+              ),
+              uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+              // Fallback to inexact scheduling which doesn't require SCHEDULE_EXACT_ALARM
+              androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+              payload: payloadAttendance,
+            );
+          } catch (e2) {
+            debugPrint("Failed to schedule inexact fallback for attendance: $e2");
+          }
+        }
     }
   }
 

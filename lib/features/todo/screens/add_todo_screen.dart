@@ -28,7 +28,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> with SingleTickerProvider
   // Common
   final TextEditingController _titleController = TextEditingController();
   bool _isNotificationEnabled = true;
-  TimeOfDay _notificationTime = const TimeOfDay(hour: 9, minute: 0);
+  late TimeOfDay _notificationTime;
 
   // Tab 1: Recurring
   int _repeatType = 0; // 0: Working days, 1: Specific days, 2: Interval
@@ -53,9 +53,14 @@ class _AddTodoScreenState extends State<AddTodoScreen> with SingleTickerProvider
     _notificationService = TodoNotificationService(flutterLocalNotificationsPlugin);
     _calendarService = CalendarSyncService();
 
-    
     _tabController = TabController(length: 2, vsync: this);
-    _fromDate = DateTime.now().add(const Duration(days: 1)); // Default tomorrow
+    
+    final n = DateTime.now();
+    _fromDate = DateTime(n.year, n.month, n.day); // Default today (midnight)
+
+    // Default time to 2 minutes from now to make testing easier
+    final now = DateTime.now().add(const Duration(minutes: 2));
+    _notificationTime = TimeOfDay(hour: now.hour, minute: now.minute);
 
     // Initialize if Editing
     if (widget.recurringTask != null) {

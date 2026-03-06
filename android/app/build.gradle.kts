@@ -29,7 +29,7 @@ android {
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
-        versionName = "2.2.1"
+        versionName = "3.0.0"
     }
 
     buildTypes {

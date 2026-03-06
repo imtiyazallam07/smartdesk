@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../shared/widgets/web_view_screen.dart';
@@ -91,23 +90,41 @@ class _CurriculumPageState extends State<CurriculumPage> {
 
     // 3. Network Call (If cache is stale, missing, or load failed)
     try {
-      final response = await http.get(Uri.parse(widget.jsonUrl));
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-
-        await saveCachedData(json);
-        // Update Timestamp ONLY on success
-        await prefs.setInt('${cacheKey}_timestamp', DateTime.now().millisecondsSinceEpoch);
-
-        setState(() {
-          data = json;
-          offline = false;
-        });
-        return; 
+      var response = await http.get(Uri.parse(widget.jsonUrl)).timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) {
+        throw Exception("Direct fetch failed with ${response.statusCode}");
       }
+      
+      final json = jsonDecode(response.body);
+      await saveCachedData(json);
+      await prefs.setInt('${cacheKey}_timestamp', DateTime.now().millisecondsSinceEpoch);
+
+      setState(() {
+        data = json;
+        offline = false;
+      });
+      return; 
     } catch (e) {
-      // Network failed
+      debugPrint("Curriculum Fetch Error: $e. Attemping proxy fallback...");
+      try {
+        // Fallback for ISP blocks / SSL Handshake errors
+        final proxyUrl = "https://api.allorigins.win/raw?url=${widget.jsonUrl}";
+        final response = await http.get(Uri.parse(proxyUrl)).timeout(const Duration(seconds: 15));
+        
+        if (response.statusCode == 200) {
+          final json = jsonDecode(response.body);
+          await saveCachedData(json);
+          await prefs.setInt('${cacheKey}_timestamp', DateTime.now().millisecondsSinceEpoch);
+
+          setState(() {
+            data = json;
+            offline = false;
+          });
+          return;
+        }
+      } catch (e2) {
+        debugPrint("Proxy Fetch Error: $e2");
+      }
     }
 
     // 4. Fallback to cache (Stale data)
@@ -238,6 +255,8 @@ class _CurriculumPageState extends State<CurriculumPage> {
 
   @override
   Widget build(BuildContext context) {
+    print(offline);
+    print(data);
     return Scaffold(
       appBar: AppBar(
         title: const Text("Curriculum"),

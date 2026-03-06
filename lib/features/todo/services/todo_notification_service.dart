@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../models/todo_model.dart';
+import 'todo_db_helper.dart';
 
 class TodoNotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin;
@@ -13,7 +15,38 @@ class TodoNotificationService {
 
   // Initialize (Channel creation is handled in main, but we could safeguard here)
   Future<void> initialize() async {
-      // Assuming channel is created or we can create if needed
+    const androidChannel = AndroidNotificationChannel(
+      _channelId,
+      _channelName,
+      description: _channelDescription,
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(androidChannel);
+  }
+
+  Future<void> rescheduleAllTasks() async {
+    // We need TodoDatabaseHelper to get all tasks
+    // Since this might cause circular import if not careful, we'll import it at the top
+    final dbHelper = TodoDatabaseHelper.instance;
+    final recurringTasks = await dbHelper.getRecurringTasks();
+    for (final task in recurringTasks) {
+      if (task.isActive && task.isNotificationEnabled) {
+        await scheduleRecurringTask(task);
+      }
+    }
+    
+    final oneTimeTasks = await dbHelper.getOneTimeTasks();
+    for (final task in oneTimeTasks) {
+      if (!task.isCompleted && task.isNotificationEnabled) {
+        await scheduleOneTimeTask(task);
+      }
+    }
   }
   
   // --- Recurring Task Scheduling ---
@@ -72,24 +105,58 @@ class TodoNotificationService {
        return;
     }
 
-    await _notificationsPlugin.zonedSchedule(
-      notificationId,
-      'Reminder: ${task.title}',
-      task.isPriority ? 'High Priority Task! Check your schedule.' : 'Time to work on this task.',
-      scheduledDate,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
-          importance: task.isPriority ? Importance.max : Importance.defaultImportance,
-          priority: task.isPriority ? Priority.high : Priority.defaultPriority,
+    final now = tz.TZDateTime.now(tz.local);
+    if (scheduledDate.isBefore(now)) {
+       final diff = now.difference(scheduledDate);
+       if (diff.inSeconds < 60 && scheduledDate.year == now.year && scheduledDate.month == now.month && scheduledDate.day == now.day) {
+         scheduledDate = now.add(const Duration(seconds: 5));
+       }
+    }
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        notificationId,
+        'Reminder: ${task.title}',
+        task.isPriority ? 'High Priority Task! Check your schedule.' : 'Time to work on this task.',
+        scheduledDate,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channelId,
+            _channelName,
+            channelDescription: _channelDescription,
+            importance: task.isPriority ? Importance.max : Importance.defaultImportance,
+            priority: task.isPriority ? Priority.high : Priority.defaultPriority,
+          ),
         ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, // Repeats weekly
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-    );
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, // Repeats weekly
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint("Failed to schedule exact alarm for weekly task, falling back to inexact: $e");
+      try {
+        await _notificationsPlugin.zonedSchedule(
+          notificationId,
+          'Reminder: ${task.title}',
+          task.isPriority ? 'High Priority Task! Check your schedule.' : 'Time to work on this task.',
+          scheduledDate,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              _channelId,
+              _channelName,
+              channelDescription: _channelDescription,
+              importance: task.isPriority ? Importance.max : Importance.defaultImportance,
+              priority: task.isPriority ? Priority.high : Priority.defaultPriority,
+            ),
+          ),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, // Repeats weekly
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        );
+      } catch (e2) {
+        debugPrint("Failed to schedule inexact fallback for weekly task: $e2");
+      }
+    }
   }
 
   Future<void> _scheduleInterval(RecurringTask task, int hour, int minute) async {
@@ -115,25 +182,58 @@ class TodoNotificationService {
      for(int i=0; i<10; i++) {
         if (task.toDate != null && scheduledDate.isAfter(tz.TZDateTime.from(task.toDate!, tz.local))) break;
         
+        final now = tz.TZDateTime.now(tz.local);
+        if (scheduledDate.isBefore(now)) {
+           final diff = now.difference(scheduledDate);
+           if (diff.inSeconds < 60 && scheduledDate.year == now.year && scheduledDate.month == now.month && scheduledDate.day == now.day) {
+             scheduledDate = now.add(const Duration(seconds: 5));
+           }
+        }
+        
         final notificationId = _getRecurringIntervalId(task.id!, i);
         
-        await _notificationsPlugin.zonedSchedule(
-          notificationId,
-          'Reminder: ${task.title}',
-          'Recurring task reminder.',
-          scheduledDate,
-          NotificationDetails(
-            android: AndroidNotificationDetails(
-              _channelId,
-              _channelName,
-              channelDescription: _channelDescription,
-              importance: task.isPriority ? Importance.max : Importance.defaultImportance,
-              priority: task.isPriority ? Priority.high : Priority.defaultPriority,
+        try {
+          await _notificationsPlugin.zonedSchedule(
+            notificationId,
+            'Reminder: ${task.title}',
+            'Recurring task reminder.',
+            scheduledDate,
+            NotificationDetails(
+              android: AndroidNotificationDetails(
+                _channelId,
+                _channelName,
+                channelDescription: _channelDescription,
+                importance: task.isPriority ? Importance.max : Importance.defaultImportance,
+                priority: task.isPriority ? Priority.high : Priority.defaultPriority,
+              ),
             ),
-          ),
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        );
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          );
+        } catch (e) {
+          debugPrint("Failed to schedule exact alarm for interval task, falling back to inexact: $e");
+          try {
+            await _notificationsPlugin.zonedSchedule(
+              notificationId,
+              'Reminder: ${task.title}',
+              'Recurring task reminder.',
+              scheduledDate,
+              NotificationDetails(
+                android: AndroidNotificationDetails(
+                  _channelId,
+                  _channelName,
+                  channelDescription: _channelDescription,
+                  importance: task.isPriority ? Importance.max : Importance.defaultImportance,
+                  priority: task.isPriority ? Priority.high : Priority.defaultPriority,
+                ),
+              ),
+              androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+              uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+            );
+          } catch (e2) {
+            debugPrint("Failed to schedule inexact fallback for interval task: $e2");
+          }
+        }
         
         scheduledDate = scheduledDate.add(Duration(days: task.intervalDays!));
      }
@@ -191,7 +291,14 @@ class TodoNotificationService {
   }
 
   Future<void> _scheduleSingleReminder(OneTimeTask task, DateTime scheduledTime, int daysBefore) async {
-     if (scheduledTime.isBefore(DateTime.now())) return; // Don't schedule past
+     if (scheduledTime.isBefore(DateTime.now())) {
+       final diff = DateTime.now().difference(scheduledTime);
+       if (diff.inSeconds < 60 && scheduledTime.year == DateTime.now().year && scheduledTime.month == DateTime.now().month && scheduledTime.day == DateTime.now().day) {
+         scheduledTime = DateTime.now().add(const Duration(seconds: 5));
+       } else {
+         return; // Don't schedule past
+       }
+     }
 
      final notificationId = _getOneTimeNotificationId(task.id!, daysBefore);
 
@@ -199,23 +306,48 @@ class TodoNotificationService {
         ? 'Deadline is today!' 
         : 'Deadline in $daysBefore days.';
 
-     await _notificationsPlugin.zonedSchedule(
-        notificationId,
-        'Task Deadline: ${task.title}',
-        body,
-        tz.TZDateTime.from(scheduledTime, tz.local),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            _channelId,
-            _channelName,
-            channelDescription: _channelDescription,
-            importance: Importance.max,
-            priority: Priority.high,
+     try {
+       await _notificationsPlugin.zonedSchedule(
+          notificationId,
+          'Task Deadline: ${task.title}',
+          body,
+          tz.TZDateTime.from(scheduledTime, tz.local),
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              _channelId,
+              _channelName,
+              channelDescription: _channelDescription,
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
           ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-     );
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+       );
+     } catch (e) {
+       debugPrint("Failed to schedule exact alarm for single reminder, falling back to inexact: $e");
+       try {
+         await _notificationsPlugin.zonedSchedule(
+            notificationId,
+            'Task Deadline: ${task.title}',
+            body,
+            tz.TZDateTime.from(scheduledTime, tz.local),
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                _channelId,
+                _channelName,
+                channelDescription: _channelDescription,
+                importance: Importance.max,
+                priority: Priority.high,
+              ),
+            ),
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+         );
+       } catch (e2) {
+         debugPrint("Failed to schedule inexact fallback for single reminder: $e2");
+       }
+     }
   }
 
   Future<void> cancelOneTimeTask(OneTimeTask task) async {

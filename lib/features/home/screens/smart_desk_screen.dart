@@ -1,9 +1,11 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../../../main.dart' show flutterLocalNotificationsPlugin, attendanceNotificationService, todoNotificationService;
+import '../../library/screens/library_screen.dart';
 
 import '../../calendar/screens/calendar_screen.dart';
 import '../../curriculum/screens/curriculum_screen.dart';
@@ -30,12 +32,32 @@ class SmartDeskState extends State<SmartDesk> with TickerProviderStateMixin {
     super.initState();
     _loadUpdateDotState();
     _checkForUpdatesOnStartup();
+    _checkPermissions();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  Future<void> _checkPermissions() async {
+    try {
+      final androidPlugin = flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        final hasPermission = await androidPlugin.areNotificationsEnabled();
+        if (hasPermission == false || hasPermission == null) {
+          await androidPlugin.requestNotificationsPermission();
+        }
+        final hasExactAlarm = await androidPlugin.canScheduleExactNotifications();
+        if (hasExactAlarm == false) {
+          await androidPlugin.requestExactAlarmsPermission();
+        }
+      }
+      
+      // Always reschedule notifications to resolve any cleared alarms from device restart
+      await attendanceNotificationService.scheduleUpcomingNotifications();
+      await todoNotificationService.rescheduleAllTasks();
+      await LibraryNotificationService.rescheduleAllBooks();
+    } catch (_) {}
   }
+
 
   Future<void> _loadUpdateDotState() async {
     final prefs = await SharedPreferences.getInstance();
@@ -114,7 +136,7 @@ class SmartDeskState extends State<SmartDesk> with TickerProviderStateMixin {
       ),
       Calendar(),
       CurriculumPage(
-        jsonUrl: "https://smart-desk-backend.vercel.app/curriculum.json",
+        jsonUrl: "https://raw.githubusercontent.com/imtiyaz-allam/SmartDesk-backend/refs/heads/main/curriculum.json",
       ),
     ];
 

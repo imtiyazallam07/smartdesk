@@ -106,7 +106,7 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage> {
         // Load stale cache if available
         _calendarFuture = loadCachedCalendar().then((cached) {
             if (cached != null) return cached;
-            throw Exception("Offline. No cached data.");
+            throw Exception("Offline");
         });
       });
     } else {

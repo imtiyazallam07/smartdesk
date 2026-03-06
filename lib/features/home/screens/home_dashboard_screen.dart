@@ -70,8 +70,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     final attendanceProvider =
         Provider.of<AttendanceProvider>(context, listen: false);
     await timetableProvider.init();
-    await attendanceProvider.loadMonth(
-        DateTime.now().year, DateTime.now().month);
+    await attendanceProvider.loadAll();
   }
 
   Future<void> _loadData() async {
@@ -136,7 +135,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         if (today.isAfter(toDate)) return false;
       }
       if (task.repeatType == 0) {
-        return dayOfWeek >= 1 && dayOfWeek <= 5;
+        return dayOfWeek >= 1 && dayOfWeek <= 6;
       } else if (task.repeatType == 1) {
         if (task.repeatDays == null || task.repeatDays!.isEmpty) return false;
         try {
@@ -312,9 +311,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   Widget _buildAttendanceWidget() {
     return Consumer<AttendanceProvider>(
       builder: (context, attendanceProvider, child) {
-        final now = DateTime.now();
-        final stats =
-            attendanceProvider.getMonthlySubjectStats(now.year, now.month);
+        final stats = attendanceProvider.getAllSubjectStats();
 
         final lowAttendanceSubjects = stats.entries
             .where((entry) => entry.value['percentage'] < 80.0)
@@ -331,7 +328,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
 
         // Low attendance list
         return DashboardCard(
-          title: 'Low Attendance Alert',
+          title: 'Low Attendance Alert (Total)',
           icon: Icons.warning_amber_rounded,
           accentColor: Colors.red,
           onViewAll: () => Navigator.push(
@@ -681,10 +678,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
               title: 'No urgent tasks',
               subtitle: 'You have no tasks due in the next 3 days',
             )
-          : Expanded(
-            child: Center(
-              child: Column(
-                  children: _upcomingTasks.take(3).map((task) {
+          : Column(
+              children: _upcomingTasks.take(3).map((task) {
                     final deadlineDate = DateTime(task.deadline!.year,
                         task.deadline!.month, task.deadline!.day);
                     final todayDate = DateTime.now();
@@ -754,10 +749,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                         ),
                       ]),
                     );
-                  }).toList(),
-                ),
+              }).toList(),
             ),
-          ),
     );
   }
 
@@ -1168,7 +1161,7 @@ class _TimelineSlotItemState extends State<_TimelineSlotItem> {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
           content: _SnackBarTimerContent(
-            message: '${widget.slot.subjectName}: ${present ? "Present ✅" : "Absent ❌"}',
+            message: '${widget.slot.subjectName}: ${present ? "Present" : "Absent"}',
             duration: const Duration(seconds: 5),
           ),
           backgroundColor: present ? _kGreen : Colors.red,
@@ -1184,10 +1177,10 @@ class _TimelineSlotItemState extends State<_TimelineSlotItem> {
               final existing = provider.getAttendance(todayDate);
               if (existing != null) {
                 final updatedSlotSubjects =
-                    Map<String, String>.from(existing.slotSubjects ?? {})
+                    Map<String, String>.from(existing.slotSubjects)
                       ..remove(slotId);
                 final updatedSlotAttendance =
-                    Map<String, bool>.from(existing.slotAttendance ?? {})
+                    Map<String, bool>.from(existing.slotAttendance)
                       ..remove(slotId);
 
                 final reverted = DailyAttendance(

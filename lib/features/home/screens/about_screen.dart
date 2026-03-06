@@ -258,7 +258,7 @@ class _AboutScreenState extends State<AboutScreen> {
               title,
               style: TextStyle(fontSize: 16, color: textColor),
             ),
-            if (trailing != null) trailing,
+            ?trailing,
           ],
         ),
       ),

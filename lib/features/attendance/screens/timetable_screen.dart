@@ -68,7 +68,8 @@ class _TimetableScreenState extends State<TimetableScreen> with SingleTickerProv
         bottom: TabBar(
           controller: _tabController,
           tabs: _days.map((day) => Tab(text: day)).toList(),
-          indicatorColor: Colors.blue,
+          indicatorColor: const Color(0xFF22C55E),
+          labelColor: const Color(0xFF22C55E),
         ),
       ),
       body: TabBarView(
@@ -301,6 +302,23 @@ class _TimetableScreenState extends State<TimetableScreen> with SingleTickerProv
                         .toList(),
                     onChanged: (val) => setSheetState(() => selectedSection = val),
                   ),
+                  const SizedBox(height: 8),
+                  // ── Hyperlink ────────────────────────────────
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: () => _showMailTimetableDialog(context),
+                      child: const Text(
+                        "Didn't find your section timetable?",
+                        style: TextStyle(
+                          color: Colors.blue,
+                          decoration: TextDecoration.underline,
+                          decorationColor: Colors.blue,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -324,6 +342,45 @@ class _TimetableScreenState extends State<TimetableScreen> with SingleTickerProv
   }
 
   // --- UTILS & DATA PROCESSING ---
+
+  // --- MAIL TIMETABLE DIALOG ---
+
+  void _showMailTimetableDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Share Your Timetable"),
+        content: const Text(
+          "Mail us the link to your timetable and we'll add it to the cloud so others can use it too!",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final uri = Uri(
+                scheme: 'mailto',
+                path: 'imtiyazallam07@outlook.com',
+                queryParameters: {
+                  'subject':
+                      'From Smartdesk: Providing the timetable to be added to cloud',
+                  'body':
+                      'Hi,\n\nHere is the link to my section timetable:\n\n[Paste link here]\n\nBatch / Section: \n\nThank you!',
+                },
+              );
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+            },
+            child: const Text("Continue"),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _fetchTimetableFromServer(String section) async {
     try {

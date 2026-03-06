@@ -13,7 +13,14 @@ class UpdateDialog extends StatelessWidget {
   });
 
   void _openChangelog() async {
-    final Uri uri = Uri.parse(updateInfo.changelogUrl);
+    // Generate the direct APK download link
+    final versionStr = updateInfo.latestVersion.startsWith('v')
+        ? updateInfo.latestVersion
+        : 'v${updateInfo.latestVersion}';
+    final downloadUrl =
+        'https://github.com/imtiyazallam07/smartdesk/releases/download/$versionStr/SmartDesk-$versionStr.apk';
+        
+    final Uri uri = Uri.parse(downloadUrl);
     try {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         await launchUrl(uri, mode: LaunchMode.platformDefault);

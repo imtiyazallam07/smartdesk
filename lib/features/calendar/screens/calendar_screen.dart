@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'academic_calendar_screen.dart';
@@ -97,6 +96,7 @@ class _CalendarState extends State<Calendar> {
       });
       return;
     } catch (e) {
+      debugPrint("Calendar Fetch Error: $e");
       // Fallback
     }
 
@@ -114,17 +114,17 @@ class _CalendarState extends State<Calendar> {
       final cachedJson = prefs.getString(cacheKey)!;
       return jsonDecode(cachedJson);
     } else {
-      return Future.error("Offline"); // This causes the "No data" UI
+      throw Exception("Offline"); // This causes the "No data" UI
     }
   }
 
   Future<List<dynamic>> fetchHolidays() async {
-    const url = "https://smart-desk-backend.vercel.app/holidays.json";
-    // We don't catch here, we let the caller handle it or catch and rethrow
-    final response = await http.get(Uri.parse(url));
+    const url = "https://raw.githubusercontent.com/imtiyaz-allam/SmartDesk-backend/refs/heads/main/holidays.json";
+    
+    final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
     if (response.statusCode == 200) {
       final prefs = await SharedPreferences.getInstance();
-      prefs.setString(cacheKey, response.body);
+      await prefs.setString(cacheKey, response.body);
       return jsonDecode(response.body);
     } else {
       throw Exception("Failed to load: ${response.statusCode}");

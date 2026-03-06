@@ -1,10 +1,21 @@
 import 'package:http/http.dart' as http;
+import 'dart:io';
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
 
 Future<void> main() async {
+  HttpOverrides.global = MyHttpOverrides();
+  
   final urls = [
+    "https://smart-desk-backend.vercel.app/curriculum.json",
     "https://smart-desk-backend.vercel.app/holidays.json",
-    "https://smartdesk-backend.netlify.app/AcademicCalendar1.json",
-    "https://smartdesk-backend.netlify.app/holidays.json"
   ];
 
   for (final url in urls) {

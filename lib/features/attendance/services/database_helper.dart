@@ -246,6 +246,12 @@ class DatabaseHelper {
       );
   }
 
+  Future<List<DailyAttendance>> getAllAttendance() async {
+    final db = await instance.database;
+    final result = await db.query('daily_attendance', orderBy: 'date ASC');
+    return result.map((json) => DailyAttendance.fromMap(json)).toList();
+  }
+
   Future<List<DailyAttendance>> getAttendanceForMonth(int year, int month) async {
       final db = await instance.database;
       final prefix = '${year.toString()}-${month.toString().padLeft(2, '0')}';

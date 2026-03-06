@@ -23,12 +23,25 @@ class AttendanceProvider with ChangeNotifier {
   /// Loads all attendance records for a specific month into the cache
   Future<void> loadMonth(int year, int month) async {
     _isLoading = true;
-    // We don't notifyListeners here to prevent mid-load UI flickering
 
     final list = await DatabaseHelper.instance.getAttendanceForMonth(year, month);
 
-    // Clear old cache for this specific month logic if needed,
-    // but here we just update/fill to keep performance snappy
+    for (var att in list) {
+      final key = DateTime(att.date.year, att.date.month, att.date.day);
+      _cache[key] = att;
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Loads ALL attendance records (from the beginning) into the cache
+  Future<void> loadAll() async {
+    _isLoading = true;
+
+    final list = await DatabaseHelper.instance.getAllAttendance();
+
+    _cache.clear();
     for (var att in list) {
       final key = DateTime(att.date.year, att.date.month, att.date.day);
       _cache[key] = att;
@@ -89,8 +102,75 @@ class AttendanceProvider with ChangeNotifier {
     };
   }
 
-  /// Returns data for the detailed Subject-wise Pie Chart
+  /// Returns subject-wise stats for a specific month (used for monthly view)
   Map<String, Map<String, dynamic>> getMonthlySubjectStats(int year, int month) {
+    return _computeSubjectStats(
+      (date) => date.year == year && date.month == month,
+    );
+  }
+
+  /// Returns subject-wise stats across ALL recorded attendance (beginning to now)
+  Map<String, Map<String, dynamic>> getAllSubjectStats() {
+    return _computeSubjectStats((_) => true);
+  }
+
+  /// Returns a chronologically sorted list of {date, percentage} data points
+  /// for [subjectName], computed cumulatively from the first recorded class.
+  List<Map<String, dynamic>> getSubjectDailyHistory(String subjectName) {
+    // Collect all relevant entries for this subject
+    final entries = <MapEntry<DateTime, DailyAttendance>>[];
+
+    _cache.forEach((date, d) {
+      if (d.status == AttendanceStatus.holiday ||
+          d.status == AttendanceStatus.weeklyOff ||
+          d.status == AttendanceStatus.notMarked) return;
+      if (!d.slotSubjects.values.contains(subjectName)) return;
+      entries.add(MapEntry(date, d));
+    });
+
+    entries.sort((a, b) => a.key.compareTo(b.key));
+
+    final List<Map<String, dynamic>> history = [];
+    int cumulativePresent = 0;
+    int cumulativeTotal = 0;
+
+    for (final entry in entries) {
+      final date = entry.key;
+      final d = entry.value;
+
+      // Count slots belonging to this subject on this day
+      d.slotSubjects.forEach((slotId, name) {
+        if (name != subjectName) return;
+        cumulativeTotal += 1;
+
+        bool isPresent = false;
+        if (d.status == AttendanceStatus.present) {
+          isPresent = true;
+        } else if (d.status == AttendanceStatus.partial) {
+          isPresent = d.slotAttendance[slotId] ?? false;
+        }
+        if (isPresent) cumulativePresent += 1;
+      });
+
+      final pct = cumulativeTotal > 0
+          ? (cumulativePresent / cumulativeTotal) * 100
+          : 0.0;
+
+      history.add({
+        'date': date,
+        'percentage': pct,
+        'present': cumulativePresent,
+        'total': cumulativeTotal,
+      });
+    }
+
+    return history;
+  }
+
+  /// Internal helper: computes subject stats for cache entries matching [filter]
+  Map<String, Map<String, dynamic>> _computeSubjectStats(
+    bool Function(DateTime date) filter,
+  ) {
     final Map<String, Map<String, dynamic>> stats = {};
 
     void initSub(String name) {
@@ -100,41 +180,36 @@ class AttendanceProvider with ChangeNotifier {
     }
 
     _cache.forEach((date, d) {
-      if (date.year == year && date.month == month) {
-        // Skip non-attendance days
-        if (d.status == AttendanceStatus.holiday ||
-            d.status == AttendanceStatus.weeklyOff ||
-            d.status == AttendanceStatus.notMarked) {
-          return;
+      if (!filter(date)) return;
+
+      if (d.status == AttendanceStatus.holiday ||
+          d.status == AttendanceStatus.weeklyOff ||
+          d.status == AttendanceStatus.notMarked) {
+        return;
+      }
+
+      if (d.slotSubjects.isEmpty) return;
+
+      d.slotSubjects.forEach((slotId, subjectName) {
+        initSub(subjectName);
+        stats[subjectName]!['total'] += 1;
+
+        bool isSlotPresent = false;
+
+        if (d.status == AttendanceStatus.present) {
+          isSlotPresent = true;
+        } else if (d.status == AttendanceStatus.absent) {
+          isSlotPresent = false;
+        } else if (d.status == AttendanceStatus.partial) {
+          isSlotPresent = d.slotAttendance[slotId] ?? false;
         }
 
-        // If there are no specific subjects recorded for this day, we can't do subject stats
-        if (d.slotSubjects.isEmpty) return;
-
-        d.slotSubjects.forEach((slotId, subjectName) {
-          initSub(subjectName);
-          stats[subjectName]!['total'] += 1;
-
-          bool isSlotPresent = false;
-
-          // Logic: If the whole day is marked Present, every subject that day is Present.
-          // If marked Partial, we check the specific slot checkbox.
-          if (d.status == AttendanceStatus.present) {
-            isSlotPresent = true;
-          } else if (d.status == AttendanceStatus.absent) {
-            isSlotPresent = false;
-          } else if (d.status == AttendanceStatus.partial) {
-            isSlotPresent = d.slotAttendance[slotId] ?? false;
-          }
-
-          if (isSlotPresent) {
-            stats[subjectName]!['present'] += 1;
-          }
-        });
-      }
+        if (isSlotPresent) {
+          stats[subjectName]!['present'] += 1;
+        }
+      });
     });
 
-    // Calculate final percentages for the Pie Chart
     stats.forEach((name, data) {
       if (data['total'] > 0) {
         data['percentage'] = (data['present'] / data['total']) * 100;
