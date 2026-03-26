@@ -5,7 +5,6 @@ import '../models/timetable.dart';
 import '../models/attendance.dart';
 import '../providers/timetable_provider.dart';
 import '../providers/attendance_provider.dart';
-import '../services/database_helper.dart';
 
 class DayAttendanceScreen extends StatefulWidget {
   final DateTime date;

@@ -19,6 +19,9 @@ import '../../library/models/book.dart';
 import '../../library/screens/library_screen.dart' show LibraryTrackerScreen;
 import '../../../widgets/dashboard_card_widget.dart';
 import '../../../shared/models/feature.dart';
+import '../../settings/providers/home_widget_provider.dart';
+import 'package:home_widget/home_widget.dart';
+import 'dart:convert';
 
 // ──────────────────────────────────────────────
 // Colour palette constants
@@ -60,7 +63,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initializeProviders());
     _loadData();
   }
 
@@ -75,6 +77,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
+
+    await _initializeProviders();
 
     final allRecurringTasks =
         await TodoDatabaseHelper.instance.getRecurringTasks();
@@ -94,18 +98,25 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     }).toList();
 
     final allBooks = await LibraryDatabaseHelper.instance.readAllBooks();
-    final upcomingBooks = allBooks.where((book) {
+    var upcomingBooks = allBooks.where((book) {
       if (book.isReturned == 1) return false;
       try {
-        final returnDate = DateTime.parse(book.returnDate);
-        final returnDateDay =
-            DateTime(returnDate.year, returnDate.month, returnDate.day);
-        final daysUntilReturn = returnDateDay.difference(today).inDays;
-        return daysUntilReturn >= 0 && daysUntilReturn <= 5;
+        DateTime.parse(book.returnDate);
+        return true;
       } catch (_) {
         return false;
       }
     }).toList();
+    
+    upcomingBooks.sort((a, b) {
+      try {
+        final dateA = DateTime.parse(a.returnDate);
+        final dateB = DateTime.parse(b.returnDate);
+        return dateA.compareTo(dateB);
+      } catch (_) {
+        return 0;
+      }
+    });
 
     if (mounted) {
       setState(() {
@@ -114,6 +125,73 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         _upcomingBooks = upcomingBooks;
         _isLoading = false;
       });
+    }
+    
+    // Update native Android widgets
+    _updateHomeWidgets();
+  }
+
+  Future<void> _updateHomeWidgets() async {
+    try {
+      final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
+      final schedule = timetableProvider.getScheduleForDay(DateTime.now().weekday);
+      
+      // 1. Timetable Widget
+      if (schedule != null && schedule.slots.isNotEmpty) {
+        final slotsData = schedule.slots.map((s) {
+          final startH = s.startTime.hour.toString().padLeft(2, '0');
+          final startM = s.startTime.minute.toString().padLeft(2, '0');
+          final endH = s.endTime.hour.toString().padLeft(2, '0');
+          final endM = s.endTime.minute.toString().padLeft(2, '0');
+          return {
+            'subject': s.subjectName,
+            'time': '$startH:$startM - $endH:$endM'
+          };
+        }).toList();
+        await HomeWidget.saveWidgetData('timetable_slots', jsonEncode(slotsData));
+      } else {
+        await HomeWidget.saveWidgetData('timetable_slots', '[]');
+      }
+      await HomeWidget.updateWidget(androidName: 'TimetableWidget');
+
+      // 2. Tasks Widget
+      final tasksData = [
+        ..._todayRecurringTasks.map((t) => {
+          'title': t.title,
+          'subtitle': 'Today\'s Task',
+          'badge': t.notificationTime != null ? t.notificationTime! : 'All Day'
+        }),
+        ..._upcomingTasks.map((t) {
+           final daysLeft = DateTime(t.deadline!.year, t.deadline!.month, t.deadline!.day)
+                              .difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
+           final dateFormatted = '${t.deadline!.day.toString().padLeft(2, '0')}/${t.deadline!.month.toString().padLeft(2, '0')}/${t.deadline!.year}';
+           return {
+             'title': t.title,
+             'subtitle': 'Deadline: $dateFormatted',
+             'badge': daysLeft == 0 ? 'DUE TODAY' : '$daysLeft Days Left'
+           };
+        })
+      ].toList();
+      await HomeWidget.saveWidgetData('tasks_data', jsonEncode(tasksData));
+      await HomeWidget.updateWidget(androidName: 'TasksWidget');
+
+      // 3. Books Widget
+      final booksData = _upcomingBooks.map((b) {
+        final returnDate = DateTime.parse(b.returnDate);
+        final daysLeft = DateTime(returnDate.year, returnDate.month, returnDate.day)
+                           .difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
+        final dateFormatted = '${returnDate.day.toString().padLeft(2, '0')}/${returnDate.month.toString().padLeft(2, '0')}/${returnDate.year}';
+        return {
+          'title': b.title,
+          'subtitle': 'Deadline: $dateFormatted',
+          'badge': daysLeft == 0 ? 'DUE TODAY' : '$daysLeft Days Left'
+        };
+      }).toList();
+      await HomeWidget.saveWidgetData('books_data', jsonEncode(booksData));
+      await HomeWidget.updateWidget(androidName: 'BooksWidget');
+      
+    } catch (e) {
+      debugPrint('Failed to update home widgets: $e');
     }
   }
 
@@ -168,23 +246,27 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         : RefreshIndicator(
             color: _kGreen,
             onRefresh: _loadData,
-            child: ListView(
-              padding: EdgeInsets.only(
-                top: 8,
-                bottom: MediaQuery.of(context).padding.bottom + 100,
-              ),
-              children: [
-                _buildSectionLabel('Quick Actions', isDark),
-                const SizedBox(height: 8),
-                _buildQuickActions(context),
-                const SizedBox(height: 8),
-                _buildAttendanceWidget(),
-                _buildTodayTimetableWidget(),
-                _buildRecurringTasksWidget(),
-                _buildUpcomingTasksWidget(),
-                _buildLibraryBooksWidget(),
-                const SizedBox(height: 16),
-              ],
+            child: Consumer<HomeWidgetProvider>(
+              builder: (context, wPref, _) {
+                return ListView(
+                  padding: EdgeInsets.only(
+                    top: 8,
+                    bottom: MediaQuery.of(context).padding.bottom + 100,
+                  ),
+                  children: [
+                    _buildSectionLabel('Quick Actions', isDark),
+                    const SizedBox(height: 8),
+                    _buildQuickActions(context),
+                    const SizedBox(height: 8),
+                    _buildAttendanceWidget(),
+                    if (wPref.showTimetable) _buildTodayTimetableWidget(),
+                    if (wPref.showTasks) _buildRecurringTasksWidget(),
+                    if (wPref.showTasks) _buildUpcomingTasksWidget(),
+                    if (wPref.showBooks) _buildLibraryBooksWidget(),
+                    const SizedBox(height: 16),
+                  ],
+                );
+              },
             ),
           );
   }
@@ -498,25 +580,51 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
           accentColor: const Color(0xFF6366F1),
           onViewAll: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const TimetableScreen())),
-          content: schedule == null || schedule.slots.isEmpty
-              ? _buildEmptyClasses()
-              : Column(
-                  children: schedule.slots
-                      .take(5)
-                      .toList()
-                      .asMap()
-                      .entries
-                      .map((e) => _TimelineSlotItem(
-                            slot: e.value,
-                            index: e.key,
-                            now: now,
-                            attendanceProvider: attendanceProvider,
-                            timetableProvider: timetableProvider,
-                            isLast: e.key == math.min(schedule.slots.length, 5) - 1,
-                            todayDate: DateTime(now.year, now.month, now.day),
-                          ))
-                      .toList(),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              schedule == null || schedule.slots.isEmpty
+                  ? _buildEmptyClasses()
+                  : Column(
+                      children: schedule.slots
+                          .take(5)
+                          .toList()
+                          .asMap()
+                          .entries
+                          .map((e) => _TimelineSlotItem(
+                                slot: e.value,
+                                index: e.key,
+                                now: now,
+                                attendanceProvider: attendanceProvider,
+                                timetableProvider: timetableProvider,
+                                isLast: e.key == math.min(schedule.slots.length, 5) - 1,
+                                todayDate: DateTime(now.year, now.month, now.day),
+                              ))
+                          .toList(),
+                    ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => HomeScreen())),
+                  icon: const Icon(Icons.fact_check_outlined, size: 16),
+                  label: const Text('Mark Attendance'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    textStyle: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
                 ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -536,8 +644,14 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                     fontWeight: FontWeight.w600,
                     color: _kTextSecondary)),
             SizedBox(height: 4),
-            Text('Enjoy your free time ✨',
-                style: TextStyle(fontSize: 13, color: _kTextSecondary)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Enjoy your free time ',
+                    style: TextStyle(fontSize: 13, color: _kTextSecondary)),
+                Icon(Icons.auto_awesome, size: 14, color: _kTextSecondary),
+              ],
+            ),
           ],
         ),
       ),
@@ -652,9 +766,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                 color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text('⏰ ${task.notificationTime}',
-                  style: const TextStyle(
-                      fontSize: 11, color: Color(0xFF3B82F6))),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.access_time, size: 12, color: Color(0xFF3B82F6)),
+                  const SizedBox(width: 4),
+                  Text('${task.notificationTime}',
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF3B82F6))),
+                ],
+              ),
             ),
         ],
       ),

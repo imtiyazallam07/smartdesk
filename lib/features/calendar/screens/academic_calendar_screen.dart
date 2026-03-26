@@ -106,7 +106,7 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage> {
         // Load stale cache if available
         _calendarFuture = loadCachedCalendar().then((cached) {
             if (cached != null) return cached;
-            throw Exception("Offline");
+            return [];
         });
       });
     } else {
@@ -143,7 +143,7 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage> {
     } catch (e) {
       final cached = await loadCachedCalendar();
       if (cached != null) return cached;
-      throw Exception("Failed to load data & no cache available");
+      return [];
     }
   }
 
@@ -171,11 +171,14 @@ class _AcademicCalendarPageState extends State<AcademicCalendarPage> {
         child: FutureBuilder<List<CalendarEvent>>(
           future: _calendarFuture,
           builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return _buildOfflinePlaceholder(snapshot.error.toString());
-            }
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
+            }
+            if (offline && (!snapshot.hasData || snapshot.data!.isEmpty)) {
+              return _buildOfflinePlaceholder("Offline");
+            }
+            if (snapshot.hasError) {
+              return _buildOfflinePlaceholder(snapshot.error.toString());
             }
             if (snapshot.hasData && snapshot.data!.isNotEmpty) {
               return _buildPrettyList(snapshot.data!);

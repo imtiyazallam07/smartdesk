@@ -113,9 +113,9 @@ class _CalendarState extends State<Calendar> {
     if (prefs.containsKey(cacheKey)) {
       final cachedJson = prefs.getString(cacheKey)!;
       return jsonDecode(cachedJson);
-    } else {
-      throw Exception("Offline"); // This causes the "No data" UI
     }
+    // No cache available — return empty list; the offline flag drives the UI
+    return [];
   }
 
   Future<List<dynamic>> fetchHolidays() async {
@@ -149,13 +149,14 @@ class _CalendarState extends State<Calendar> {
                 snapshot.data == null) {
               return const Center(child: CircularProgressIndicator());
             }
-            if (snapshot.hasError && snapshot.data == null) {
+            // Show offline placeholder when flagged offline with no cached data
+            if (offline && (snapshot.data == null || snapshot.data!.isEmpty)) {
+              return _buildOfflinePlaceholder();
+            }
+            if (snapshot.hasError) {
               return _buildOfflinePlaceholder();
             }
             final holidays = snapshot.data ?? [];
-            if (holidays.isEmpty && snapshot.hasError) {
-              return _buildOfflinePlaceholder();
-            }
             return _buildHolidayTable(holidays);
           },
         ),

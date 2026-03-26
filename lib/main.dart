@@ -23,6 +23,7 @@ import 'features/attendance/providers/subject_provider.dart';
 import 'features/attendance/services/attendance_notification_service.dart';
 import 'features/attendance/screens/quick_attendance_screen.dart';
 import 'features/settings/providers/theme_provider.dart';
+import 'features/settings/providers/home_widget_provider.dart';
 import 'services/onboarding_service.dart';
 import 'features/onboarding/onboarding_screen.dart';
 
@@ -155,6 +156,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AttendanceProvider()),
         ChangeNotifierProvider(create: (_) => SubjectProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => HomeWidgetProvider()),
       ],
       child: MyApp(),
     ),

@@ -78,7 +78,7 @@ class LibraryNotificationService {
       try {
         await flutterLocalNotificationsPlugin.zonedSchedule(
           notificationId,
-          daysBefore == 0 ? '📚 Return Book Today!' : '⏰ Book Return Reminder',
+          daysBefore == 0 ? 'Return Book Today!' : 'Book Return Reminder',
           daysBefore == 0
               ? 'Return "${book.title}" to the library today.'
               : '"${book.title}" is due in $daysBefore day${daysBefore > 1 ? "s" : ""}.',
@@ -100,7 +100,7 @@ class LibraryNotificationService {
         try {
           await flutterLocalNotificationsPlugin.zonedSchedule(
             notificationId,
-            daysBefore == 0 ? '📚 Return Book Today!' : '⏰ Book Return Reminder',
+            daysBefore == 0 ? 'Return Book Today!' : 'Book Return Reminder',
             daysBefore == 0
                 ? 'Return "${book.title}" to the library today.'
                 : '"${book.title}" is due in $daysBefore day${daysBefore > 1 ? "s" : ""}.',

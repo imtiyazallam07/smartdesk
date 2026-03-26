@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../home/screens/about_screen.dart';
 import '../providers/theme_provider.dart';
+import '../providers/home_widget_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -123,10 +124,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text("Settings"),
         centerTitle: true,
       ),
-      body: _isLoading 
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(20.0),
+          : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -152,7 +153,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 builder: (context, themeProvider, child) {
                                   return DropdownButton<ThemeMode>(
                                     value: themeProvider.themeMode,
-                                    underline: Container(), // Hide default underline
+                                    underline: Container(),
                                     icon: const Icon(Icons.palette),
                                     items: const [
                                       DropdownMenuItem(
@@ -185,8 +186,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   const SizedBox(height: 20),
 
+                  // HOME SCREEN WIDGETS CARD
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 12, bottom: 4),
+                            child: Text(
+                              "Home Screen Widgets",
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(left: 12, bottom: 8),
+                            child: Text(
+                              "Choose which widgets appear on your home screen.",
+                              style: TextStyle(fontSize: 13, color: Colors.grey),
+                            ),
+                          ),
+                          Consumer<HomeWidgetProvider>(
+                            builder: (context, wPref, _) {
+                              return Column(
+                                children: [
+                                  SwitchListTile(
+                                    title: const Text("Today's Timetable"),
+                                    subtitle: const Text("Shows today's class schedule with quick attendance marking"),
+                                    secondary: const Icon(Icons.schedule_rounded, color: Color(0xFF6366F1)),
+                                    value: wPref.showTimetable,
+                                    onChanged: wPref.setShowTimetable,
+                                    activeThumbColor: const Color(0xFF6366F1),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                  ),
+                                  const Divider(height: 1, indent: 56),
+                                  SwitchListTile(
+                                    title: const Text("Tasks & Reminders"),
+                                    subtitle: const Text("Shows today's reminders and urgent upcoming tasks"),
+                                    secondary: const Icon(Icons.task_alt_rounded, color: Color(0xFF3B82F6)),
+                                    value: wPref.showTasks,
+                                    onChanged: wPref.setShowTasks,
+                                    activeThumbColor: const Color(0xFF3B82F6),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                  ),
+                                  const Divider(height: 1, indent: 56),
+                                  SwitchListTile(
+                                    title: const Text("Borrowed Books"),
+                                    subtitle: const Text("Shows books with upcoming return deadlines"),
+                                    secondary: const Icon(Icons.library_books_rounded, color: Color(0xFFF59E0B)),
+                                    value: wPref.showBooks,
+                                    onChanged: wPref.setShowBooks,
+                                    activeThumbColor: const Color(0xFFF59E0B),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
                   // ACADEMIC PROFILE CARD
-                   Card(
+                  Card(
                     elevation: 2,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
@@ -222,21 +290,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 onChanged: (value) {
                                   setState(() {
                                     _selectedYear = value;
-                                    // Reset branch if year changes as options might change (simplification)
-                                    // Or simply keep it if valid.
-                                    // For safety, let's keep it if it exists in new list, else reset.
                                     if (_selectedYear != null) {
-                                       final branches = _getBranchesForYear(_selectedYear!);
-                                       if (_selectedBranch != null && !branches.contains(_selectedBranch)) {
-                                         _selectedBranch = null;
-                                       }
+                                      final branches = _getBranchesForYear(_selectedYear!);
+                                      if (_selectedBranch != null && !branches.contains(_selectedBranch)) {
+                                        _selectedBranch = null;
+                                      }
                                     }
                                   });
                                 },
                               ),
                             ),
                           ),
-                          
+
                           if (_selectedYear != null) ...[
                             const SizedBox(height: 16),
                             const Text("Select Branch:", style: TextStyle(color: Colors.grey)),
@@ -257,7 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     return DropdownMenuItem(
                                       value: branch,
                                       child: Text(
-                                        branch, 
+                                        branch,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(fontSize: 14),
                                       ),
@@ -301,9 +366,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
-                   // APP INFO CARD
+                  // APP INFO CARD
                   Card(
                     elevation: 2,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -318,7 +384,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
 
-                  const Spacer(),
+                  const SizedBox(height: 24),
+
+                  // SAVE BUTTON
                   SizedBox(
                     height: 50,
                     child: ElevatedButton(

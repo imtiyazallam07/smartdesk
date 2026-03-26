@@ -61,6 +61,7 @@ dependencies:
   image_gallery_saver: ^2.0.3
   image_picker: ^1.0.7
   package_info_plus: ^8.1.2
+  home_widget: ^0.7.0
 
 
 dev_dependencies:
