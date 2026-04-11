@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as path;
 import '../models/book.dart';
+import '../../../services/widget_update_service.dart';
 
 class LibraryDatabaseHelper {
   static final LibraryDatabaseHelper instance = LibraryDatabaseHelper._init();
@@ -47,7 +48,9 @@ CREATE TABLE books (
 
   Future<int> create(Book book) async {
     final db = await instance.database;
-    return await db.insert('books', book.toMap());
+    final id = await db.insert('books', book.toMap());
+    await WidgetUpdateService.updateAllWidgets();
+    return id;
   }
 
   Future<List<Book>> readAllBooks() async {
@@ -59,11 +62,15 @@ CREATE TABLE books (
 
   Future<int> update(Book book) async {
     final db = await instance.database;
-    return await db.update('books', book.toMap(), where: 'id = ?', whereArgs: [book.id]);
+    final count = await db.update('books', book.toMap(), where: 'id = ?', whereArgs: [book.id]);
+    await WidgetUpdateService.updateAllWidgets();
+    return count;
   }
 
   Future<int> delete(int id) async {
     final db = await instance.database;
-    return await db.delete('books', where: 'id = ?', whereArgs: [id]);
+    final count = await db.delete('books', where: 'id = ?', whereArgs: [id]);
+    await WidgetUpdateService.updateAllWidgets();
+    return count;
   }
 }

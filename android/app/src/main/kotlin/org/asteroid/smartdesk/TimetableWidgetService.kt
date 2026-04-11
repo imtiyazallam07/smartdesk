@@ -20,11 +20,26 @@ class TimetableWidgetFactory(private val context: Context) : RemoteViewsService.
 
     override fun onDataSetChanged() {
         val widgetData = HomeWidgetPlugin.getData(context)
-        val slotsJson = widgetData.getString("timetable_slots", "[]")
+        val allSlotsJson = widgetData.getString("timetable_slots_all", "{}")
+        
+        val calendar = java.util.Calendar.getInstance()
+        val dayOfWeek = calendar.get(java.util.Calendar.DAY_OF_WEEK)
+        // Convert Android DAY_OF_WEEK (Sun=1, Mon=2...) to Dart DateTime weekday (Mon=1, Sun=7)
+        val dartWeekday = if (dayOfWeek == java.util.Calendar.SUNDAY) 7 else dayOfWeek - 1
+
         try {
-            slots = JSONArray(slotsJson)
+            val allSlotsObj = org.json.JSONObject(allSlotsJson)
+            val slotsArray = allSlotsObj.optJSONArray(dartWeekday.toString())
+            slots = slotsArray ?: org.json.JSONArray()
         } catch (e: Exception) {
-            slots = JSONArray()
+            
+            // Fallback to legacy single-day string if map parsing fails
+            val slotsJson = widgetData.getString("timetable_slots", "[]")
+            try {
+                slots = org.json.JSONArray(slotsJson)
+            } catch (ex: Exception) {
+                slots = org.json.JSONArray()
+            }
         }
     }
 

@@ -21,8 +21,9 @@ import '../../../widgets/dashboard_card_widget.dart';
 import '../../../shared/models/feature.dart';
 import '../../settings/providers/home_widget_provider.dart';
 import 'package:home_widget/home_widget.dart';
+import 'package:home_widget/home_widget.dart';
 import 'dart:convert';
-
+import '../../../services/widget_update_service.dart';
 // ──────────────────────────────────────────────
 // Colour palette constants
 // ──────────────────────────────────────────────
@@ -64,6 +65,29 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   void initState() {
     super.initState();
     _loadData();
+    _initHomeWidgetListener();
+  }
+
+  void _initHomeWidgetListener() {
+    HomeWidget.widgetClicked.listen((Uri? uri) {
+      if (uri != null) _handleWidgetRoute(uri);
+    });
+
+    HomeWidget.initiallyLaunchedFromHomeWidget().then((Uri? uri) {
+      if (uri != null) _handleWidgetRoute(uri);
+    });
+  }
+
+  void _handleWidgetRoute(Uri uri) {
+    if (!mounted) return;
+    final host = uri.host; 
+    if (host == 'tasks') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const TodoHomeScreen()));
+    } else if (host == 'books') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const LibraryTrackerScreen()));
+    } else if (host == 'timetable') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+    }
   }
 
   Future<void> _initializeProviders() async {
@@ -132,67 +156,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
   }
 
   Future<void> _updateHomeWidgets() async {
-    try {
-      final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
-      final schedule = timetableProvider.getScheduleForDay(DateTime.now().weekday);
-      
-      // 1. Timetable Widget
-      if (schedule != null && schedule.slots.isNotEmpty) {
-        final slotsData = schedule.slots.map((s) {
-          final startH = s.startTime.hour.toString().padLeft(2, '0');
-          final startM = s.startTime.minute.toString().padLeft(2, '0');
-          final endH = s.endTime.hour.toString().padLeft(2, '0');
-          final endM = s.endTime.minute.toString().padLeft(2, '0');
-          return {
-            'subject': s.subjectName,
-            'time': '$startH:$startM - $endH:$endM'
-          };
-        }).toList();
-        await HomeWidget.saveWidgetData('timetable_slots', jsonEncode(slotsData));
-      } else {
-        await HomeWidget.saveWidgetData('timetable_slots', '[]');
-      }
-      await HomeWidget.updateWidget(androidName: 'TimetableWidget');
-
-      // 2. Tasks Widget
-      final tasksData = [
-        ..._todayRecurringTasks.map((t) => {
-          'title': t.title,
-          'subtitle': 'Today\'s Task',
-          'badge': t.notificationTime != null ? t.notificationTime! : 'All Day'
-        }),
-        ..._upcomingTasks.map((t) {
-           final daysLeft = DateTime(t.deadline!.year, t.deadline!.month, t.deadline!.day)
-                              .difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
-           final dateFormatted = '${t.deadline!.day.toString().padLeft(2, '0')}/${t.deadline!.month.toString().padLeft(2, '0')}/${t.deadline!.year}';
-           return {
-             'title': t.title,
-             'subtitle': 'Deadline: $dateFormatted',
-             'badge': daysLeft == 0 ? 'DUE TODAY' : '$daysLeft Days Left'
-           };
-        })
-      ].toList();
-      await HomeWidget.saveWidgetData('tasks_data', jsonEncode(tasksData));
-      await HomeWidget.updateWidget(androidName: 'TasksWidget');
-
-      // 3. Books Widget
-      final booksData = _upcomingBooks.map((b) {
-        final returnDate = DateTime.parse(b.returnDate);
-        final daysLeft = DateTime(returnDate.year, returnDate.month, returnDate.day)
-                           .difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
-        final dateFormatted = '${returnDate.day.toString().padLeft(2, '0')}/${returnDate.month.toString().padLeft(2, '0')}/${returnDate.year}';
-        return {
-          'title': b.title,
-          'subtitle': 'Deadline: $dateFormatted',
-          'badge': daysLeft == 0 ? 'DUE TODAY' : '$daysLeft Days Left'
-        };
-      }).toList();
-      await HomeWidget.saveWidgetData('books_data', jsonEncode(booksData));
-      await HomeWidget.updateWidget(androidName: 'BooksWidget');
-      
-    } catch (e) {
-      debugPrint('Failed to update home widgets: $e');
-    }
+    await WidgetUpdateService.updateAllWidgets();
   }
 
   List<RecurringTask> _filterTodayRecurringTasks(List<RecurringTask> tasks) {
@@ -667,13 +631,38 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       accentColor: const Color(0xFF3B82F6),
       onViewAll: () => Navigator.push(context,
           MaterialPageRoute(builder: (_) => const TodoHomeScreen())),
-      content: _todayRecurringTasks.isEmpty
-          ? _buildRemindersEmptyState(isDark)
-          : Column(
-              children: _todayRecurringTasks.take(3).map((task) {
-                return _buildStyledReminderTile(task, isDark);
-              }).toList(),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _todayRecurringTasks.isEmpty
+              ? _buildRemindersEmptyState(isDark)
+              : Column(
+                  children: _todayRecurringTasks.take(3).map((task) {
+                    return _buildStyledReminderTile(task, isDark);
+                  }).toList(),
+                ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TodoHomeScreen())),
+              icon: const Icon(Icons.task_alt_outlined, size: 16),
+              label: const Text('View all tasks'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                textStyle: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -791,16 +780,19 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       accentColor: _kWarning,
       onViewAll: () => Navigator.push(context,
           MaterialPageRoute(builder: (_) => const TodoHomeScreen())),
-      content: _upcomingTasks.isEmpty
-          ? _buildGenericEmptyState(
-              isDark: isDark,
-              icon: Icons.task_outlined,
-              iconColor: _kWarning,
-              title: 'No urgent tasks',
-              subtitle: 'You have no tasks due in the next 3 days',
-            )
-          : Column(
-              children: _upcomingTasks.take(3).map((task) {
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _upcomingTasks.isEmpty
+              ? _buildGenericEmptyState(
+                  isDark: isDark,
+                  icon: Icons.task_outlined,
+                  iconColor: _kWarning,
+                  title: 'No urgent tasks',
+                  subtitle: 'You have no tasks due in the next 3 days',
+                )
+              : Column(
+                  children: _upcomingTasks.take(3).map((task) {
                     final deadlineDate = DateTime(task.deadline!.year,
                         task.deadline!.month, task.deadline!.day);
                     final todayDate = DateTime.now();
@@ -819,17 +811,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                             : Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.grey.shade200,
-                        ),
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.grey.shade200),
                       ),
                       child: Row(children: [
                         Container(
                           width: 8,
                           height: 8,
-                          decoration:
-                              BoxDecoration(color: accentClr, shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                              color: accentClr, shape: BoxShape.circle),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -870,8 +861,30 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                         ),
                       ]),
                     );
-              }).toList(),
+                  }).toList(),
+                ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TodoHomeScreen())),
+              icon: const Icon(Icons.task_alt_outlined, size: 16),
+              label: const Text('View all tasks'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kWarning,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                textStyle: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -884,77 +897,102 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       accentColor: const Color(0xFF3B82F6),
       onViewAll: () => Navigator.push(context,
           MaterialPageRoute(builder: (_) => const LibraryTrackerScreen())),
-      content: _upcomingBooks.isEmpty
-          ? _buildGenericEmptyState(
-              isDark: isDark,
-              icon: Icons.menu_book_outlined,
-              iconColor: const Color(0xFF3B82F6),
-              title: 'No books due soon',
-              subtitle: 'All your books have plenty of time left',
-            )
-          : Column(
-              children: _upcomingBooks.take(3).map((book) {
-                final returnDate = DateTime.parse(book.returnDate);
-                final returnDateDay = DateTime(
-                    returnDate.year, returnDate.month, returnDate.day);
-                final todayDate = DateTime.now();
-                final today = DateTime(
-                    todayDate.year, todayDate.month, todayDate.day);
-                final daysLeft = returnDateDay.difference(today).inDays;
-                final color = daysLeft == 0
-                    ? Colors.red
-                    : (daysLeft <= 2 ? Colors.orange : Colors.amber);
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _upcomingBooks.isEmpty
+              ? _buildGenericEmptyState(
+                  isDark: isDark,
+                  icon: Icons.menu_book_outlined,
+                  iconColor: const Color(0xFF3B82F6),
+                  title: 'No books due soon',
+                  subtitle: 'All your books have plenty of time left',
+                )
+              : Column(
+                  children: _upcomingBooks.take(3).map((book) {
+                    final returnDate = DateTime.parse(book.returnDate);
+                    final returnDateDay = DateTime(
+                        returnDate.year, returnDate.month, returnDate.day);
+                    final todayDate = DateTime.now();
+                    final today = DateTime(
+                        todayDate.year, todayDate.month, todayDate.day);
+                    final daysLeft = returnDateDay.difference(today).inDays;
+                    final color = daysLeft == 0
+                        ? Colors.red
+                        : (daysLeft <= 2 ? Colors.orange : Colors.amber);
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.grey.shade200,
-                    ),
-                  ),
-                  child: Row(children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration:
-                          BoxDecoration(color: color, shape: BoxShape.circle),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(book.title,
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? _kTextPrimary : Colors.black87),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.grey.shade200,
+                        ),
                       ),
-                      child: Text(
-                        daysLeft == 0 ? 'TODAY' : '$daysLeft DAY${daysLeft > 1 ? 'S' : ''}',
-                        style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: color),
-                      ),
-                    ),
-                  ]),
-                );
-              }).toList(),
+                      child: Row(children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration:
+                              BoxDecoration(color: color, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(book.title,
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? _kTextPrimary : Colors.black87),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            daysLeft == 0 ? 'TODAY' : '$daysLeft DAY${daysLeft > 1 ? 'S' : ''}',
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: color),
+                          ),
+                        ),
+                      ]),
+                    );
+                  }).toList(),
+                ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LibraryTrackerScreen())),
+              icon: const Icon(Icons.menu_book_rounded, size: 16),
+              label: const Text('View Library'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                textStyle: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
+          ),
+        ],
+      ),
     );
   }
 

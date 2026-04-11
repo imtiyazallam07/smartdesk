@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../models/timetable.dart';
 import '../models/attendance.dart';
 import '../models/subject.dart';
+import '../../../services/widget_update_service.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -168,6 +169,7 @@ class DatabaseHelper {
       map['dayOfWeek'] = dayOfWeek;
       
       await db.insert('slots', map, conflictAlgorithm: ConflictAlgorithm.replace);
+      await WidgetUpdateService.updateAllWidgets();
   }
   
   Future<void> updateSlot(int dayOfWeek, TimeSlot slot) async {
@@ -181,6 +183,7 @@ class DatabaseHelper {
           where: 'id = ?', 
           whereArgs: [slot.id]
       );
+      await WidgetUpdateService.updateAllWidgets();
   }
   
   Future<void> deleteSlot(String id) async {
@@ -190,6 +193,7 @@ class DatabaseHelper {
           where: 'id = ?',
           whereArgs: [id]
       );
+      await WidgetUpdateService.updateAllWidgets();
   }
   
   Future<Map<int, List<TimeSlot>>> getAllSlots() async {

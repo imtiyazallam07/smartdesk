@@ -66,7 +66,7 @@ class _DayAttendanceScreenState extends State<DayAttendanceScreen> {
             children: [
                _buildStatusSelector(),
                const SizedBox(height: 20),
-               if (_status != AttendanceStatus.absent && _status != AttendanceStatus.holiday && _status != AttendanceStatus.weeklyOff && _status != AttendanceStatus.notMarked)
+               if (_status != AttendanceStatus.holiday && _status != AttendanceStatus.weeklyOff)
                    _buildSlotList(daySchedule),
             ],
           ),
@@ -108,6 +108,7 @@ class _DayAttendanceScreenState extends State<DayAttendanceScreen> {
               color: _status == status ? color : Theme.of(context).colorScheme.onSurface,
           ),
           onSelected: (selected) {
+              if (status == AttendanceStatus.partial) return;
               if (selected) {
                   setState(() {
                       _status = status;
@@ -160,6 +161,13 @@ class _DayAttendanceScreenState extends State<DayAttendanceScreen> {
                       activeColor: Colors.green,
                       onChanged: (val) {
                           setState(() {
+                              // Ensure all slots have an explicit state before making changes
+                              for (var s in schedule.slots) {
+                                  if (!_slotAttendance.containsKey(s.id)) {
+                                      _slotAttendance[s.id] = (_status == AttendanceStatus.present || _status == AttendanceStatus.partial);
+                                  }
+                              }
+
                               _slotAttendance[slot.id] = val ?? false;
                               
                               // Recalculate status based on slot selection

@@ -123,7 +123,7 @@ class _AboutScreenState extends State<AboutScreen> {
             Image.asset('assets/logo.png', width: 70, height: 70),
             const SizedBox(height: 12),
             Text(
-              "SmartDesk",
+              "Project SmartDesk",
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,

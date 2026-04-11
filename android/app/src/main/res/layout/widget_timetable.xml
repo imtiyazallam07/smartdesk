@@ -7,7 +7,7 @@
     android:padding="12dp">
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingBottom="12dp">
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="📅 Today's Classes" android:textColor="@color/widget_text_primary" android:textSize="13sp" android:textStyle="bold" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Today's Classes" android:textColor="@color/widget_text_primary" android:textSize="13sp" android:textStyle="bold" />
         <TextView android:id="@+id/widget_timetable_app_name" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SmartDesk" android:textColor="#6366F1" android:textSize="11sp" />
     </LinearLayout>
 
@@ -25,7 +25,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:text="No classes today 🎉"
+        android:text="No classes today"
         android:textColor="@color/widget_text_secondary"
         android:textSize="12sp"
         android:visibility="gone" />

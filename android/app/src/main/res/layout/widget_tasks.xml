@@ -7,7 +7,7 @@
     android:padding="12dp">
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingBottom="4dp">
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="✅ Tasks &amp; Reminders" android:textColor="@color/widget_text_primary" android:textSize="13sp" android:textStyle="bold" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Tasks &amp; Reminders" android:textColor="@color/widget_text_primary" android:textSize="13sp" android:textStyle="bold" />
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SmartDesk" android:textColor="#3B82F6" android:textSize="11sp" />
     </LinearLayout>
 
@@ -27,7 +27,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:text="No tasks today 🎉"
+        android:text="No tasks today"
         android:textColor="@color/widget_text_secondary"
         android:textSize="12sp"
         android:visibility="gone" />
@@ -36,13 +36,13 @@
         android:id="@+id/btn_open_app"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="#3B82F6"
+        android:layout_marginTop="0dp"
+        android:background="@drawable/bg_widget_card"
         android:gravity="center"
-        android:paddingTop="7dp"
-        android:paddingBottom="7dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
         android:text="View All Tasks"
-        android:textColor="#FFFFFF"
-        android:textSize="12sp"
+        android:textColor="#3B82F6"
+        android:textSize="13sp"
         android:textStyle="bold" />
 </LinearLayout>

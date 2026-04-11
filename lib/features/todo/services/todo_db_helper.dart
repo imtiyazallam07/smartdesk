@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/todo_model.dart';
+import '../../../services/widget_update_service.dart';
 
 class TodoDatabaseHelper {
   static final TodoDatabaseHelper instance = TodoDatabaseHelper._init();
@@ -69,7 +70,9 @@ class TodoDatabaseHelper {
   // --- Recurring Task Operations ---
   Future<int> createRecurringTask(RecurringTask task) async {
     final db = await instance.database;
-    return await db.insert('recurring_tasks', task.toMap());
+    final id = await db.insert('recurring_tasks', task.toMap());
+    await WidgetUpdateService.updateAllWidgets();
+    return id;
   }
 
   Future<List<RecurringTask>> getRecurringTasks() async {
@@ -80,27 +83,33 @@ class TodoDatabaseHelper {
 
   Future<int> updateRecurringTask(RecurringTask task) async {
     final db = await instance.database;
-    return await db.update(
+    final count = await db.update(
       'recurring_tasks',
       task.toMap(),
       where: 'id = ?',
       whereArgs: [task.id],
     );
+    await WidgetUpdateService.updateAllWidgets();
+    return count;
   }
 
   Future<int> deleteRecurringTask(int id) async {
     final db = await instance.database;
-    return await db.delete(
+    final count = await db.delete(
       'recurring_tasks',
       where: 'id = ?',
       whereArgs: [id],
     );
+    await WidgetUpdateService.updateAllWidgets();
+    return count;
   }
 
   // --- One-Time Task Operations ---
   Future<int> createOneTimeTask(OneTimeTask task) async {
     final db = await instance.database;
-    return await db.insert('one_time_tasks', task.toMap());
+    final id = await db.insert('one_time_tasks', task.toMap());
+    await WidgetUpdateService.updateAllWidgets();
+    return id;
   }
 
   Future<List<OneTimeTask>> getOneTimeTasks() async {
@@ -112,20 +121,24 @@ class TodoDatabaseHelper {
 
   Future<int> updateOneTimeTask(OneTimeTask task) async {
     final db = await instance.database;
-    return await db.update(
+    final count = await db.update(
       'one_time_tasks',
       task.toMap(),
       where: 'id = ?',
       whereArgs: [task.id],
     );
+    await WidgetUpdateService.updateAllWidgets();
+    return count;
   }
 
   Future<int> deleteOneTimeTask(int id) async {
     final db = await instance.database;
-    return await db.delete(
+    final count = await db.delete(
       'one_time_tasks',
       where: 'id = ?',
       whereArgs: [id],
     );
+    await WidgetUpdateService.updateAllWidgets();
+    return count;
   }
 }

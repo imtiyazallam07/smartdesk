@@ -29,6 +29,7 @@ import 'features/onboarding/onboarding_screen.dart';
 
 import 'features/todo/services/todo_notification_service.dart';
 import 'features/library/screens/library_screen.dart';
+import 'services/widget_update_service.dart';
 
 
 // -----------------------------------------------------------------------------
@@ -60,6 +61,12 @@ late TodoNotificationService todoNotificationService;
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
+    WidgetsFlutterBinding.ensureInitialized();
+    try {
+      await WidgetUpdateService.updateAllWidgets();
+    } catch (e) {
+      debugPrint('Background Task Error: $e');
+    }
     return Future.value(true);
   });
 }
@@ -110,15 +117,20 @@ void main() async {
     callbackDispatcher,
   );
 
-  /*Workmanager().registerPeriodicTask(
-    uniqueTaskName,
-    taskName,
+  final now = DateTime.now();
+  var nextUpdate = DateTime(now.year, now.month, now.day, 0, 2);
+  if (now.isAfter(nextUpdate)) {
+    nextUpdate = nextUpdate.add(const Duration(days: 1));
+  }
+  final initialDelay = nextUpdate.difference(now);
+
+  Workmanager().registerPeriodicTask(
+    "widget_update_task_id",
+    "widgetUpdateTask",
     frequency: const Duration(hours: 24),
-    constraints: Constraints(
-      networkType: NetworkType.connected,
-    ),
+    initialDelay: initialDelay,
     existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-  );*/
+  );
 
   // Initialize attendance notification service
   attendanceNotificationService = AttendanceNotificationService(flutterLocalNotificationsPlugin);

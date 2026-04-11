@@ -68,6 +68,7 @@
             android:label="Today's Timetable">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="org.asteroid.smartdesk.ACTION_MIDNIGHT_REFRESH" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

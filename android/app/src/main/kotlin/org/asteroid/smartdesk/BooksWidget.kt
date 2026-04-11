@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.RemoteViews
+import es.antonborri.home_widget.HomeWidgetLaunchIntent
 
 class BooksWidget : AppWidgetProvider() {
 
@@ -36,12 +37,10 @@ class BooksWidget : AppWidgetProvider() {
                 views.setRemoteAdapter(R.id.widget_list, serviceIntent)
                 views.setEmptyView(R.id.widget_list, R.id.widget_empty)
 
-                val openAppIntent = Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                }
-                val openPendingIntent = PendingIntent.getActivity(
-                    context, 2, openAppIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                val openPendingIntent = HomeWidgetLaunchIntent.getActivity(
+                    context,
+                    MainActivity::class.java,
+                    Uri.parse("smartdesk://books")
                 )
                 
                 views.setPendingIntentTemplate(R.id.widget_list, openPendingIntent)
