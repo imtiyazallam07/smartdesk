@@ -1,4 +1,4 @@
-# 🎓 SmartDesk - Your Personal College Companion
+# SmartDesk - Your Personal College Companion
 <p align="center">
   <img src="screenshots/thumbnail1.jpg" alt="Logo" style="vertical-align: middle;"/>
 </p>
