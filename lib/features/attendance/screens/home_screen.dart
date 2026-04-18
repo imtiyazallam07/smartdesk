@@ -12,6 +12,7 @@ import 'timetable_setup_screen.dart';
 import 'subject_management_screen.dart';
 import 'subject_attendance_graph_screen.dart';
 import '../services/holiday_service.dart';
+import '../../../shared/responsive_utils.dart';
 
 // ── Colour palette (mirrors home dashboard) ──────────────────────────────────
 const _kGreen        = Color(0xFF22C55E);
@@ -143,20 +144,20 @@ class _HomeScreenState extends State<HomeScreen>
         ? const Color(0xFF1F2937)
         : Colors.grey.shade200;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14)),
+      margin: EdgeInsets.symmetric(horizontal: rw(context, 16), vertical: rw(context, 6)),
+      padding: EdgeInsets.all(rw(context, 3)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(rw(context, 14))),
       child: TabBar(
         controller: _tabController,
         indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(rw(context, 11)),
           color: _kGreen,
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
         unselectedLabelColor: isDark ? _kTextSecondary : Colors.black54,
-        labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+        labelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: rw(context, 14)),
         tabs: const [
           Tab(text: 'Total'),
           Tab(text: 'This Month'),
@@ -168,10 +169,10 @@ class _HomeScreenState extends State<HomeScreen>
   // ── Calendar ─────────────────────────────────────────────────────────────────
   Widget _buildCalendar(AttendanceProvider provider, bool isDark) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      margin: EdgeInsets.fromLTRB(rw(context, 16), rw(context, 8), rw(context, 16), rw(context, 4)),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF111827) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(rw(context, 20)),
         border: isDark
             ? Border.all(color: Colors.white.withValues(alpha: 0.06))
             : null,
@@ -195,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen>
           titleCentered: true,
           titleTextStyle: TextStyle(
             fontWeight: FontWeight.w700,
-            fontSize: 15,
+            fontSize: rw(context, 15),
             color: isDark ? _kTextPrimary : Colors.black87,
           ),
           leftChevronIcon: Icon(Icons.chevron_left,
@@ -206,11 +207,11 @@ class _HomeScreenState extends State<HomeScreen>
         daysOfWeekStyle: DaysOfWeekStyle(
           weekdayStyle: TextStyle(
               color: isDark ? _kTextSecondary : Colors.black54,
-              fontSize: 12,
+              fontSize: rw(context, 12),
               fontWeight: FontWeight.w600),
           weekendStyle: TextStyle(
               color: isDark ? _kTextSecondary : Colors.black54,
-              fontSize: 12,
+              fontSize: rw(context, 12),
               fontWeight: FontWeight.w600),
         ),
         calendarStyle: CalendarStyle(
@@ -416,17 +417,18 @@ class _SubjectStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final donutSize = rw(context, 68);
     return GestureDetector(
       onTap: onTap,
       child: Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: EdgeInsets.symmetric(horizontal: rw(context, 16), vertical: rw(context, 6)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
               ? [color.withValues(alpha: 0.08), color.withValues(alpha: 0.03)]
               : [color.withValues(alpha: 0.07), Colors.white],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(rw(context, 18)),
         border: Border.all(
           color: color.withValues(alpha: isDark ? 0.18 : 0.22),
         ),
@@ -439,13 +441,13 @@ class _SubjectStatCard extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(rw(context, 14)),
         child: Row(
           children: [
             // ── Donut chart ─────────────────────────────────
             SizedBox(
-              width: 68,
-              height: 68,
+              width: donutSize,
+              height: donutSize,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -454,27 +456,27 @@ class _SubjectStatCard extends StatelessWidget {
                       PieChartSectionData(
                           value: present.toDouble(),
                           color: color,
-                          radius: 10,
+                          radius: rw(context, 10),
                           showTitle: false),
                       PieChartSectionData(
                           value: absent.toDouble(),
                           color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                          radius: 10,
+                          radius: rw(context, 10),
                           showTitle: false),
                     ],
                     sectionsSpace: 2,
-                    centerSpaceRadius: 24,
+                    centerSpaceRadius: rw(context, 24),
                     startDegreeOffset: -90,
                   )),
                   Text(
                     '${pct.toInt()}%',
                     style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: color),
+                        fontSize: rw(context, 13), fontWeight: FontWeight.w700, color: color),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: rw(context, 14)),
             // ── Details ─────────────────────────────────────
             Expanded(
               child: Column(
@@ -488,7 +490,7 @@ class _SubjectStatCard extends StatelessWidget {
                           subject,
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            fontSize: 14,
+                            fontSize: rw(context, 14),
                             color: isDark ? _kTextPrimary : Colors.black87,
                           ),
                           maxLines: 1,
@@ -497,12 +499,12 @@ class _SubjectStatCard extends StatelessWidget {
                       ),
                       Icon(
                         Icons.chevron_right_rounded,
-                        size: 16,
+                        size: ri(context, 16),
                         color: isDark ? _kTextSecondary : Colors.black38,
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: rw(context, 4)),
                       Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: EdgeInsets.all(rw(context, 6)),
                         decoration: BoxDecoration(
                             color: color.withValues(alpha: isDark ? 0.10 : 0.14),
                             shape: BoxShape.circle),
@@ -512,13 +514,13 @@ class _SubjectStatCard extends StatelessWidget {
                               : pct < 75
                                   ? Icons.trending_down
                                   : Icons.check_rounded,
-                          size: 16,
+                          size: ri(context, 16),
                           color: color,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: rw(context, 6)),
                   // Linear progress bar
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
@@ -531,53 +533,53 @@ class _SubjectStatCard extends StatelessWidget {
                       minHeight: 5,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: rw(context, 6)),
                   // Present / Absent counts + classes hint
                   Row(
                     children: [
                       Icon(Icons.check_circle_outline,
-                          size: 13,
+                          size: ri(context, 13),
                           color: isDark ? const Color(0xFF4ADE80) : Colors.green.shade600),
-                      const SizedBox(width: 3),
+                      SizedBox(width: rw(context, 3)),
                       Text('$present',
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: rw(context, 11),
                               fontWeight: FontWeight.w600,
                               color: isDark ? const Color(0xFF4ADE80) : Colors.green.shade600)),
-                      const SizedBox(width: 10),
+                      SizedBox(width: rw(context, 10)),
                       Icon(Icons.cancel_outlined,
-                          size: 13,
+                          size: ri(context, 13),
                           color: isDark ? const Color(0xFFF87171) : Colors.red.shade500),
-                      const SizedBox(width: 3),
+                      SizedBox(width: rw(context, 3)),
                       Text('$absent',
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: rw(context, 11),
                               fontWeight: FontWeight.w600,
                               color: isDark ? const Color(0xFFF87171) : Colors.red.shade500)),
                       const Spacer(),
                       Text(
                         'of $total',
                         style: TextStyle(
-                            fontSize: 11,
+                            fontSize: rw(context, 11),
                             color: isDark ? _kTextSecondary : Colors.black45),
                       ),
                     ],
                   ),
                   if (classesNeeded > 0) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: rw(context, 4)),
                     Text(
                       'Need $classesNeeded more class${classesNeeded > 1 ? 'es' : ''} for 75%',
                       style: TextStyle(
-                          fontSize: 10,
+                          fontSize: rw(context, 10),
                           color: color,
                           fontWeight: FontWeight.w500),
                     ),
                   ] else ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: rw(context, 4)),
                     Text(
                       'Above 75% ✓',
                       style: TextStyle(
-                          fontSize: 10,
+                          fontSize: rw(context, 10),
                           color: isDark ? const Color(0xFF4ADE80) : Colors.green.shade600,
                           fontWeight: FontWeight.w500),
                     ),

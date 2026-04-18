@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/timetable.dart';
 import '../providers/timetable_provider.dart';
 import '../providers/subject_provider.dart';
+import '../../../shared/responsive_utils.dart';
 
 class TimetableSetupScreen extends StatelessWidget {
   const TimetableSetupScreen({super.key});
@@ -133,7 +134,8 @@ class TimetableSetupScreen extends StatelessWidget {
 
           return AlertDialog(
             title: Text(isEditing ? "Edit Class" : "Add Class"),
-            content: Column(
+            content: SingleChildScrollView(
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -258,12 +260,12 @@ class TimetableSetupScreen extends StatelessWidget {
                         children: [
                           Text(
                             "$displayHour", 
-                            style: const TextStyle(fontSize: 10, color: Colors.grey)
+                            style: TextStyle(fontSize: rw(context, 10), color: Colors.grey)
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: rw(context, 4)),
                           Container(
-                            height: 28,
-                            margin: const EdgeInsets.symmetric(horizontal: 1.0),
+                            height: rh(context, 28),
+                            margin: EdgeInsets.symmetric(horizontal: rw(context, 1.0)),
                             decoration: BoxDecoration(
                               color: isBreak 
                                   ? Colors.grey.withValues(alpha: 0.3)
@@ -306,6 +308,7 @@ class TimetableSetupScreen extends StatelessWidget {
                     )
                 )
               ],
+            ),
             ),
             actions: [
               TextButton(

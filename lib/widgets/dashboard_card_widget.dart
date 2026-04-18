@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../shared/responsive_utils.dart';
 
 class DashboardCard extends StatelessWidget {
   final String title;
@@ -23,10 +24,10 @@ class DashboardCard extends StatelessWidget {
     final accent = accentColor ?? Theme.of(context).colorScheme.primary;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.symmetric(horizontal: rw(context, 16), vertical: rw(context, 8)),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(rw(context, 20)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
@@ -36,7 +37,7 @@ class DashboardCard extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(rw(context, 16)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -45,44 +46,49 @@ class DashboardCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    if (icon != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (icon != null) ...[
+                        Container(
+                          padding: EdgeInsets.all(rw(context, 7)),
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(rw(context, 10)),
+                          ),
+                          child: Icon(icon, size: ri(context, 18), color: accent),
                         ),
-                        child: Icon(icon, size: 18, color: accent),
+                        SizedBox(width: rw(context, 10)),
+                      ],
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: rw(context, 15),
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? const Color(0xFFE5E7EB) : Colors.black87,
+                            letterSpacing: 0.1,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      const SizedBox(width: 10),
                     ],
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? const Color(0xFFE5E7EB) : Colors.black87,
-                        letterSpacing: 0.1,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
                 TextButton(
                   onPressed: onViewAll,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: rw(context, 10), vertical: rw(context, 4)),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     foregroundColor: accent,
                   ),
-                  child: const Text('View All', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: Text('View All', style: TextStyle(fontSize: rw(context, 12), fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
             Divider(
-              height: 20,
+              height: rw(context, 20),
               thickness: 1,
               color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
             ),

@@ -24,6 +24,7 @@ import 'package:home_widget/home_widget.dart';
 import 'package:home_widget/home_widget.dart';
 import 'dart:convert';
 import '../../../services/widget_update_service.dart';
+import '../../../shared/responsive_utils.dart';
 // ──────────────────────────────────────────────
 // Colour palette constants
 // ──────────────────────────────────────────────
@@ -95,7 +96,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
         Provider.of<TimetableProvider>(context, listen: false);
     final attendanceProvider =
         Provider.of<AttendanceProvider>(context, listen: false);
-    await timetableProvider.init();
+    await timetableProvider.refreshTimetable();
     await attendanceProvider.loadAll();
   }
 
@@ -237,11 +238,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
 
   Widget _buildSectionLabel(String label, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.symmetric(horizontal: rw(context, 20)),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 13,
+          fontSize: rw(context, 13),
           fontWeight: FontWeight.w700,
           letterSpacing: 1.1,
           color: isDark ? _kTextSecondary : Colors.black45,
@@ -285,17 +286,20 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     ];
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final compact = Responsive.isCompact(context);
+    final cardRadius = rw(context, 20);
+    final iconBoxSize = rw(context, 40);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: rw(context, 16)),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: quickFeatures.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 2.6,
+          crossAxisSpacing: rw(context, 12),
+          mainAxisSpacing: rw(context, 12),
+          childAspectRatio: compact ? 2.3 : 2.6,
         ),
         itemBuilder: (context, index) {
           final feature = quickFeatures[index];
@@ -303,13 +307,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
             color: Colors.transparent,
             child: InkWell(
               onTap: feature.onTap,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(cardRadius),
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    EdgeInsets.symmetric(horizontal: rw(context, 14), vertical: rw(context, 10)),
                 decoration: BoxDecoration(
                   color: isDark ? _kCardDark : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(cardRadius),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.07),
@@ -321,21 +325,21 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                 child: Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: iconBoxSize,
+                      height: iconBoxSize,
                       decoration: BoxDecoration(
                         color: feature.color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(rw(context, 12)),
                       ),
                       child:
-                          Icon(feature.icon, color: feature.color, size: 22),
+                          Icon(feature.icon, color: feature.color, size: ri(context, 22)),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: rw(context, 10)),
                     Expanded(
                       child: Text(
                         feature.title,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: rw(context, 13),
                           fontWeight: FontWeight.w600,
                           color: isDark ? _kTextPrimary : Colors.black87,
                         ),
@@ -388,8 +392,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
               final absent = total - present;
               final color = _getColorForPercentage(percentage);
 
+              final donutSize = rw(context, 64);
               return Container(
-                margin: const EdgeInsets.symmetric(vertical: 6),
+                margin: EdgeInsets.symmetric(vertical: rw(context, 6)),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isDark
@@ -402,16 +407,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                             Colors.white,
                           ],
                   ),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(rw(context, 14)),
                   border: Border.all(color: color.withValues(alpha: 0.3)),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(14),
+                  padding: EdgeInsets.all(rw(context, 14)),
                   child: Row(
                     children: [
                       SizedBox(
-                        width: 64,
-                        height: 64,
+                        width: donutSize,
+                        height: donutSize,
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
@@ -420,31 +425,31 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                                 PieChartSectionData(
                                     value: present.toDouble(),
                                     color: color,
-                                    radius: 10,
+                                    radius: rw(context, 10),
                                     showTitle: false),
                                 PieChartSectionData(
                                     value: absent.toDouble(),
                                     color: isDark
                                         ? Colors.grey.shade700
                                         : Colors.grey.shade200,
-                                    radius: 10,
+                                    radius: rw(context, 10),
                                     showTitle: false),
                               ],
                               sectionsSpace: 2,
-                              centerSpaceRadius: 22,
+                              centerSpaceRadius: rw(context, 22),
                               startDegreeOffset: -90,
                             )),
                             Text(
                               '${percentage.toInt()}%',
                               style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: rw(context, 13),
                                   fontWeight: FontWeight.bold,
                                   color: color),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      SizedBox(width: rw(context, 14)),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,13 +457,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                             Text(subject,
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                                    fontSize: rw(context, 14),
                                     color: isDark
                                         ? _kTextPrimary
                                         : Colors.black87),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
-                            const SizedBox(height: 6),
+                            SizedBox(height: rw(context, 6)),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(3),
                               child: LinearProgressIndicator(
@@ -470,37 +475,37 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                                 minHeight: 5,
                               ),
                             ),
-                            const SizedBox(height: 5),
+                            SizedBox(height: rw(context, 5)),
                             Row(children: [
                               Icon(Icons.check_circle_outline,
-                                  size: 13,
+                                  size: ri(context, 13),
                                   color: Colors.green.shade500),
-                              const SizedBox(width: 3),
+                              SizedBox(width: rw(context, 3)),
                               Text('$present',
                                   style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: rw(context, 11),
                                       fontWeight: FontWeight.w600,
                                       color: Colors.green.shade500)),
-                              const SizedBox(width: 10),
+                              SizedBox(width: rw(context, 10)),
                               Icon(Icons.cancel_outlined,
-                                  size: 13, color: Colors.red.shade400),
-                              const SizedBox(width: 3),
+                                  size: ri(context, 13), color: Colors.red.shade400),
+                              SizedBox(width: rw(context, 3)),
                               Text('$absent',
                                   style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: rw(context, 11),
                                       fontWeight: FontWeight.w600,
                                       color: Colors.red.shade400)),
                               const Spacer(),
                               Text('of $total',
-                                  style: const TextStyle(
-                                      fontSize: 11, color: _kTextSecondary)),
+                                  style: TextStyle(
+                                      fontSize: rw(context, 11), color: _kTextSecondary)),
                             ]),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      SizedBox(width: rw(context, 6)),
                       Container(
-                        padding: const EdgeInsets.all(7),
+                        padding: EdgeInsets.all(rw(context, 7)),
                         decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.15),
                             shape: BoxShape.circle),
@@ -508,7 +513,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                             percentage < 60
                                 ? Icons.priority_high
                                 : Icons.trending_down,
-                            size: 18,
+                            size: ri(context, 18),
                             color: color),
                       ),
                     ],
@@ -1079,8 +1084,9 @@ class _AttendanceHeroCardState extends State<_AttendanceHeroCard>
 
   @override
   Widget build(BuildContext context) {
+    final ringSize = rw(context, 70);
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.symmetric(horizontal: rw(context, 16), vertical: rw(context, 8)),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -1089,7 +1095,7 @@ class _AttendanceHeroCardState extends State<_AttendanceHeroCard>
               ? [const Color(0xFF0D2818), const Color(0xFF0A1A10)]
               : [const Color(0xFFD1FAE5), const Color(0xFFF0FFF4)],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(rw(context, 20)),
         border: Border.all(color: _kGreen.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
@@ -1100,26 +1106,26 @@ class _AttendanceHeroCardState extends State<_AttendanceHeroCard>
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(rw(context, 20)),
         child: Row(
           children: [
             // Animated progress ring → check
             SizedBox(
-              width: 70,
-              height: 70,
+              width: ringSize,
+              height: ringSize,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
                 child: _showCheck
                     ? Container(
                         key: const ValueKey('check'),
-                        width: 70,
-                        height: 70,
+                        width: ringSize,
+                        height: ringSize,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: _kGreen.withValues(alpha: 0.15),
                         ),
-                        child: const Icon(Icons.check_circle_rounded,
-                            size: 44, color: _kGreen),
+                        child: Icon(Icons.check_circle_rounded,
+                            size: ri(context, 44), color: _kGreen),
                       )
                     : AnimatedBuilder(
                         key: const ValueKey('ring'),
@@ -1127,13 +1133,13 @@ class _AttendanceHeroCardState extends State<_AttendanceHeroCard>
                         builder: (context, _) {
                           return CustomPaint(
                             painter: _RingPainter(progress: _progress.value),
-                            child: const SizedBox(width: 70, height: 70),
+                            child: SizedBox(width: ringSize, height: ringSize),
                           );
                         },
                       ),
               ),
             ),
-            const SizedBox(width: 20),
+            SizedBox(width: rw(context, 20)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1141,29 +1147,29 @@ class _AttendanceHeroCardState extends State<_AttendanceHeroCard>
                   Text(
                     'All subjects above 80% 🎉',
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: rw(context, 15),
                       fontWeight: FontWeight.w700,
                       color: widget.isDark ? _kTextPrimary : Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: rw(context, 6)),
                   Text(
                     "You're on track — keep it going!",
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: rw(context, 13),
                       color: widget.isDark ? _kTextSecondary : Colors.black54,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: rw(context, 12)),
                   TextButton.icon(
                     onPressed: () => Navigator.push(context,
                         MaterialPageRoute(builder: (_) => const HomeScreen())),
-                    icon: const Icon(Icons.bar_chart_rounded, size: 16),
-                    label: const Text('View Details'),
+                    icon: Icon(Icons.bar_chart_rounded, size: ri(context, 16)),
+                    label: Text('View Details', style: TextStyle(fontSize: rw(context, 13))),
                     style: TextButton.styleFrom(
                       foregroundColor: _kGreen,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: rw(context, 12), vertical: rw(context, 4)),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
@@ -1372,9 +1378,9 @@ class _TimelineSlotItemState extends State<_TimelineSlotItem> {
         Column(
           children: [
             Container(
-              width: 12,
-              height: 12,
-              margin: const EdgeInsets.only(top: 14),
+              width: rw(context, 12),
+              height: rw(context, 12),
+              margin: EdgeInsets.only(top: rw(context, 14)),
               decoration: BoxDecoration(
                 color: status == _SlotStatus.ongoing
                     ? _kGreen
@@ -1389,9 +1395,9 @@ class _TimelineSlotItemState extends State<_TimelineSlotItem> {
             ),
             if (!widget.isLast)
               Container(
-                width: 2,
-                height: 60,
-                margin: const EdgeInsets.only(top: 4),
+                width: rw(context, 2),
+                height: rw(context, 60),
+                margin: EdgeInsets.only(top: rw(context, 4)),
                 color: isDark
                     ? Colors.white.withValues(alpha: 0.1)
                     : Colors.grey.shade300,
@@ -1473,8 +1479,8 @@ class _TimelineSlotItemState extends State<_TimelineSlotItem> {
                       ],
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: rw(context, 12), vertical: rw(context, 10)),
                       child: Row(
                         children: [
                           Expanded(
@@ -1484,18 +1490,18 @@ class _TimelineSlotItemState extends State<_TimelineSlotItem> {
                                 Text(
                                   widget.slot.timeString,
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: rw(context, 13),
                                     fontWeight: FontWeight.w700,
                                     color: isDark
                                         ? _kTextPrimary
                                         : Colors.black87,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                SizedBox(height: rw(context, 2)),
                                 Text(
                                   widget.slot.subjectName,
-                                  style: const TextStyle(
-                                      fontSize: 12, color: _kTextSecondary),
+                                  style: TextStyle(
+                                      fontSize: rw(context, 12), color: _kTextSecondary),
                                 ),
                               ],
                             ),

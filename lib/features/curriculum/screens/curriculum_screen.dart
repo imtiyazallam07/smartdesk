@@ -273,7 +273,7 @@ class _CurriculumPageState extends State<CurriculumPage> {
                       child:
                           Icon(Icons.wifi_off, size: 60, color: Colors.grey)),
                   const SizedBox(height: 20),
-                  const Center(child: Text("No notices available offline.")),
+                  const Center(child: Text("No data available offline.")),
                 ],
               ))
             : data == null

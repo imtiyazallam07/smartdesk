@@ -3,7 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../home/screens/about_screen.dart';
 import '../providers/theme_provider.dart';
-import '../providers/home_widget_provider.dart';
+import '../services/backup_service.dart';
+import 'dart:async';
+import '../../attendance/providers/timetable_provider.dart';
+import '../../attendance/providers/attendance_provider.dart';
+import '../../attendance/providers/subject_provider.dart';
+import '../../../services/widget_update_service.dart';
+import '../../../shared/responsive_utils.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -127,7 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              padding: EdgeInsets.fromLTRB(rw(context, 20), rw(context, 20), rw(context, 20), rw(context, 32)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -136,15 +142,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     elevation: 2,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(rw(context, 16.0)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "App Appearance",
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: rw(context, 18), fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: rw(context, 16)),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -186,85 +192,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   const SizedBox(height: 20),
 
-                  // HOME SCREEN WIDGETS CARD
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(left: 12, bottom: 4),
-                            child: Text(
-                              "Home Screen Widgets",
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.only(left: 12, bottom: 8),
-                            child: Text(
-                              "Choose which widgets appear on your home screen.",
-                              style: TextStyle(fontSize: 13, color: Colors.grey),
-                            ),
-                          ),
-                          Consumer<HomeWidgetProvider>(
-                            builder: (context, wPref, _) {
-                              return Column(
-                                children: [
-                                  SwitchListTile(
-                                    title: const Text("Today's Timetable"),
-                                    subtitle: const Text("Shows today's class schedule with quick attendance marking"),
-                                    secondary: const Icon(Icons.schedule_rounded, color: Color(0xFF6366F1)),
-                                    value: wPref.showTimetable,
-                                    onChanged: wPref.setShowTimetable,
-                                    activeThumbColor: const Color(0xFF6366F1),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                                  ),
-                                  const Divider(height: 1, indent: 56),
-                                  SwitchListTile(
-                                    title: const Text("Tasks & Reminders"),
-                                    subtitle: const Text("Shows today's reminders and urgent upcoming tasks"),
-                                    secondary: const Icon(Icons.task_alt_rounded, color: Color(0xFF3B82F6)),
-                                    value: wPref.showTasks,
-                                    onChanged: wPref.setShowTasks,
-                                    activeThumbColor: const Color(0xFF3B82F6),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                                  ),
-                                  const Divider(height: 1, indent: 56),
-                                  SwitchListTile(
-                                    title: const Text("Borrowed Books"),
-                                    subtitle: const Text("Shows books with upcoming return deadlines"),
-                                    secondary: const Icon(Icons.library_books_rounded, color: Color(0xFFF59E0B)),
-                                    value: wPref.showBooks,
-                                    onChanged: wPref.setShowBooks,
-                                    activeThumbColor: const Color(0xFFF59E0B),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
 
-                  const SizedBox(height: 20),
 
                   // ACADEMIC PROFILE CARD
                   Card(
                     elevation: 2,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(rw(context, 16.0)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "Academic Profile",
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: rw(context, 18), fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 16),
                           const Text("Select Joining Year:", style: TextStyle(color: Colors.grey)),
@@ -369,6 +310,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   const SizedBox(height: 20),
 
+                  // DATA BACKUP CARD
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: EdgeInsets.all(rw(context, 16.0)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Data Backup",
+                            style: TextStyle(fontSize: rw(context, 18), fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Export your tasks, timetable, attendance, and library records to a secure file, or restore them.",
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.upload_rounded, size: 18),
+                                  label: const Text("Export"),
+                                  onPressed: () async {
+                                    bool success = await BackupService.exportData(context);
+                                    if (success && context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text("Backup exported successfully")),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.download_rounded, size: 18),
+                                  label: const Text("Import"),
+                                  onPressed: () {
+                                    _showImportWarningDialog(context);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
                   // APP INFO CARD
                   Card(
                     elevation: 2,
@@ -388,19 +383,135 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   // SAVE BUTTON
                   SizedBox(
-                    height: 50,
+                    height: rw(context, 50),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rw(context, 10))),
                       ),
                       onPressed: _selectedYear == null ? null : _saveData,
-                      child: const Text("Save Settings", style: TextStyle(color: Colors.white, fontSize: 16)),
+                      child: Text("Save Settings", style: TextStyle(color: Colors.white, fontSize: rw(context, 16))),
                     ),
                   ),
                 ],
               ),
             ),
+    );
+  }
+
+  void _showImportWarningDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return const _ImportWarningDialog();
+      },
+    );
+  }
+}
+
+class _ImportWarningDialog extends StatefulWidget {
+  const _ImportWarningDialog();
+
+  @override
+  State<_ImportWarningDialog> createState() => _ImportWarningDialogState();
+}
+
+class _ImportWarningDialogState extends State<_ImportWarningDialog> {
+  int _countdown = 10;
+  Timer? _timer;
+  bool _isImporting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_countdown > 0) {
+        setState(() {
+          _countdown--;
+        });
+      } else {
+        _timer?.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _performImport() async {
+    setState(() {
+      _isImporting = true;
+    });
+
+    bool success = await BackupService.importData();
+
+    if (!mounted) return;
+
+    if (success) {
+      if (mounted) {
+        Provider.of<TimetableProvider>(context, listen: false).refreshTimetable();
+        Provider.of<AttendanceProvider>(context, listen: false).loadAll();
+        Provider.of<SubjectProvider>(context, listen: false).loadSubjects();
+        WidgetUpdateService.updateAllWidgets();
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Data restored successfully. Returning to Home."),
+        ),
+      );
+      // Pop dialog
+      Navigator.of(context).pop();
+      // Pop to home to force refresh
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
+      setState(() {
+        _isImporting = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+          SizedBox(width: 8),
+          Text("Warning"),
+        ],
+      ),
+      content: const Text(
+        "Importing a backup will remove all your current Tasks, Reminders, Attendance, and Library records. This action cannot be undone.\n\nAre you sure you want to proceed?",
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isImporting ? null : () => Navigator.of(context).pop(),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: (_countdown > 0 || _isImporting) ? null : _performImport,
+          child: _isImporting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2))
+              : Text(
+                  _countdown > 0 ? "Continue ($_countdown)" : "Continue",
+                  style: const TextStyle(color: Colors.white),
+                ),
+        ),
+      ],
     );
   }
 }

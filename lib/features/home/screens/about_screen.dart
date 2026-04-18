@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../../services/version_service.dart';
 import '../../../widgets/update_dialog.dart';
+import '../../../shared/responsive_utils.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -120,12 +121,12 @@ class _AboutScreenState extends State<AboutScreen> {
           children: [
             /// -------------------- App Info --------------------
             const SizedBox(height: 8),
-            Image.asset('assets/logo.png', width: 70, height: 70),
+            Image.asset('assets/logo.png', width: rw(context, 70), height: rw(context, 70)),
             const SizedBox(height: 12),
             Text(
               "Project SmartDesk",
               style: TextStyle(
-                fontSize: 24,
+                fontSize: rw(context, 24),
                 fontWeight: FontWeight.bold,
                 color: textColor,
               ),
@@ -134,14 +135,14 @@ class _AboutScreenState extends State<AboutScreen> {
               _version,
               style: TextStyle(
                 color: textColor.withValues(alpha: 0.7),
-                fontSize: 14,
+                fontSize: rw(context, 14),
               ),
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: rh(context, 28)),
 
             /// -------------------- Developer Info --------------------
             CircleAvatar(
-              radius: 70,
+              radius: rw(context, 70),
               backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
               backgroundImage: const NetworkImage(
                 "https://avatars.githubusercontent.com/u/95128488?v=4",
@@ -150,13 +151,13 @@ class _AboutScreenState extends State<AboutScreen> {
             const SizedBox(height: 16),
             Text(
               "Developed and designed by",
-              style: TextStyle(color: subtitleColor, fontSize: 14),
+              style: TextStyle(color: subtitleColor, fontSize: rw(context, 14)),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: rw(context, 4)),
             Text(
               "Imtiyaz Allam",
               style: TextStyle(
-                fontSize: 18,
+                fontSize: rw(context, 18),
                 fontWeight: FontWeight.w600,
                 color: textColor,
               ),
@@ -182,12 +183,12 @@ class _AboutScreenState extends State<AboutScreen> {
 
             /// -------------------- Support Section --------------------
             Padding(
-              padding: const EdgeInsets.only(left: 16),
+              padding: EdgeInsets.only(left: rw(context, 16)),
               child: Text(
                 "SUPPORT",
                 style: TextStyle(
                   color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
-                  fontSize: 14,
+                  fontSize: rw(context, 14),
                   fontWeight: FontWeight.bold,
                 ),
               ),

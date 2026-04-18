@@ -18,6 +18,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../../shared/responsive_utils.dart';
 
 class TimetableScreen extends StatefulWidget {
   const TimetableScreen({super.key});
@@ -104,28 +105,28 @@ class _TimetableScreenState extends State<TimetableScreen> with SingleTickerProv
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
         backgroundColor: const Color(0xFF1E2124), // Match dark screenshot background
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: EdgeInsets.all(rw(context, 20.0)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   "Export Timetable",
-                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Colors.white, fontSize: rw(context, 22), fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(height: 20),
               // White box for QR visibility
               Container(
-                padding: const EdgeInsets.all(15), // 15px UI Padding
+                padding: EdgeInsets.all(rw(context, 15)),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: SizedBox(
-                  width: 250,
-                  height: 250,
+                  width: rw(context, 250),
+                  height: rw(context, 250),
                   child: QrImageView(
                     data: jsonString,
                     version: QrVersions.auto,

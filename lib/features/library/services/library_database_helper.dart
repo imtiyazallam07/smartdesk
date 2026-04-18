@@ -15,6 +15,13 @@ class LibraryDatabaseHelper {
     return _database!;
   }
 
+  Future<void> closeDatabase() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+  }
+
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final fullPath = path.join(dbPath, filePath);

@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'widgets/onboarding_page.dart';
 import '../../services/onboarding_service.dart';
 import '../../main.dart' show flutterLocalNotificationsPlugin;
+import '../../shared/responsive_utils.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -107,7 +108,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               )
             else
-              const SizedBox(height: 48),
+              SizedBox(height: rw(context, 48)),
 
             // PageView
             Expanded(
@@ -120,20 +121,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
             // Page indicators
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: rw(context, 16)),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
                   _totalPages,
                   (index) => Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: _currentPage == index ? 12 : 8,
-                    height: 8,
+                    margin: EdgeInsets.symmetric(horizontal: rw(context, 4)),
+                    width: _currentPage == index ? rw(context, 12) : rw(context, 8),
+                    height: rw(context, 8),
                     decoration: BoxDecoration(
                       color: _currentPage == index
                           ? Colors.blue
                           : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(rw(context, 4)),
                     ),
                   ),
                 ),
@@ -142,7 +143,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
             // Navigation buttons
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(rw(context, 24)),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -153,7 +154,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: const Text('Back'),
                     )
                   else
-                    const SizedBox(width: 80),
+                    SizedBox(width: rw(context, 80)),
 
                   // Next/Get Started button
                   ElevatedButton(
@@ -163,14 +164,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 12,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: rw(context, 32),
+                        vertical: rw(context, 12),
                       ),
                     ),
                     child: Text(
                       _currentPage < _totalPages - 1 ? 'Next' : 'Get Started',
-                      style: const TextStyle(fontSize: 16),
+                      style: TextStyle(fontSize: rw(context, 16)),
                     ),
                   ),
                 ],

@@ -13,6 +13,7 @@ import '../../settings/screens/settings_screen.dart';
 import 'home_dashboard_screen.dart';
 import '../../../services/version_service.dart';
 import '../../../widgets/update_dialog.dart';
+import '../../../shared/responsive_utils.dart';
 
 class SmartDesk extends StatefulWidget {
   const SmartDesk({super.key});
@@ -236,11 +237,12 @@ class SmartDeskState extends State<SmartDesk> with TickerProviderStateMixin {
     ];
 
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final navHeight = rw(context, 70);
     return Container(
-      height: 70 + bottomInset,
+      height: navHeight + bottomInset,
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(rw(context, 24))),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
@@ -274,22 +276,22 @@ class SmartDeskState extends State<SmartDesk> with TickerProviderStateMixin {
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOut,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: EdgeInsets.symmetric(horizontal: rw(context, 16), vertical: rw(context, 6)),
               decoration: BoxDecoration(
                 color: selected ? accent.withValues(alpha: 0.15) : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(rw(context, 20)),
               ),
               child: Icon(
                 selected ? item.activeIcon : item.icon,
                 color: selected ? accent : Colors.grey,
-                size: 24,
+                size: ri(context, 24),
               ),
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: rw(context, 2)),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
-                fontSize: selected ? 11 : 10,
+                fontSize: rw(context, selected ? 11 : 10),
                 fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                 color: selected ? accent : Colors.grey,
               ),
