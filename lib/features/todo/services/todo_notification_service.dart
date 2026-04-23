@@ -7,13 +7,22 @@ import 'todo_db_helper.dart';
 class TodoNotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin;
 
-  static const String _channelId = 'todo_channel';
-  static const String _channelName = 'Task Reminders';
+  static const String _channelId = 'todo_channel_v2';
+  static const String _channelName = 'SmartDesk Task Reminders';
   static const String _channelDescription = 'Notifications for tasks and reminders';
+
+  /// Schedules this many days of recurring notifications ahead on each app open.
+  static const int _scheduleWindowDays = 30;
+
+  /// Maximum individual alarm slots per task (per slot index in ID scheme).
+  static const int _maxSlotsPerTask = 60;
 
   TodoNotificationService(this._notificationsPlugin);
 
-  // Initialize (Channel creation is handled in main, but we could safeguard here)
+  // ---------------------------------------------------------------------------
+  // Initialization
+  // ---------------------------------------------------------------------------
+
   Future<void> initialize() async {
     const androidChannel = AndroidNotificationChannel(
       _channelId,
@@ -30,30 +39,42 @@ class TodoNotificationService {
         ?.createNotificationChannel(androidChannel);
   }
 
+  // ---------------------------------------------------------------------------
+  // Reschedule all (called on app open)
+  // ---------------------------------------------------------------------------
+
   Future<void> rescheduleAllTasks() async {
-    // We need TodoDatabaseHelper to get all tasks
-    // Since this might cause circular import if not careful, we'll import it at the top
     final dbHelper = TodoDatabaseHelper.instance;
+
     final recurringTasks = await dbHelper.getRecurringTasks();
     for (final task in recurringTasks) {
       if (task.isActive && task.isNotificationEnabled) {
         await scheduleRecurringTask(task);
+      } else {
+        // Make sure disabled/inactive tasks are fully cancelled
+        await cancelRecurringTask(task);
       }
     }
-    
+
     final oneTimeTasks = await dbHelper.getOneTimeTasks();
     for (final task in oneTimeTasks) {
       if (!task.isCompleted && task.isNotificationEnabled) {
         await scheduleOneTimeTask(task);
+      } else {
+        await cancelOneTimeTask(task);
       }
     }
   }
-  
-  // --- Recurring Task Scheduling ---
+
+  // ---------------------------------------------------------------------------
+  // Recurring Task Scheduling
+  // ---------------------------------------------------------------------------
 
   Future<void> scheduleRecurringTask(RecurringTask task) async {
+    // Always cancel first so stale alarms are removed
+    await cancelRecurringTask(task);
+
     if (!task.isNotificationEnabled || task.notificationTime == null || !task.isActive) {
-      await cancelRecurringTask(task);
       return;
     }
 
@@ -61,354 +82,240 @@ class TodoNotificationService {
     final int hour = int.parse(timeParts[0]);
     final int minute = int.parse(timeParts[1]);
 
+    final now = DateTime.now();
+    final windowEnd = now.add(const Duration(days: _scheduleWindowDays));
+
+    // Build a flat list of all DateTime occurrences in the window
+    final List<DateTime> occurrences = [];
+
     if (task.repeatType == 0) {
-      // Every working day (Mon-Sat, assuming Sat is working based on AttendanceService, or standard Mon-Fri? Context implies Mon-Sat usually in India or specific contexts)
-      // "Every working day" usually implies Mon-Fri or Mon-Sat. Let's assume Mon-Sat as per typical student apps or user can specify.
-      // Actually, let's look at 'repeatDays' logic. If type is 0, we can hardcode Mon-Sat or match user intent. 
-      // The prompt says "every working day*". I'll treat it as Mon-Fri (1-5) or Mon-Sat (1-6). Let's go with Mon-Sat (1-6) as per AttendanceService.
-      for (int day = 1; day <= 6; day++) {
-        await _scheduleWeekly(task, day, hour, minute);
-      }
+      // Every working day: Mon (1) – Sat (6)
+      occurrences.addAll(_getWeekdayOccurrences({1, 2, 3, 4, 5, 6}, hour, minute, now, windowEnd, task));
     } else if (task.repeatType == 1) {
       // Specific days
-      if (task.repeatDays != null) {
-        final days = task.repeatDays!.split(',').map((e) => int.parse(e)).toList();
-        for (final day in days) {
-          await _scheduleWeekly(task, day, hour, minute);
-        }
+      if (task.repeatDays != null && task.repeatDays!.isNotEmpty) {
+        final days = task.repeatDays!.split(',').map(int.parse).toSet();
+        occurrences.addAll(_getWeekdayOccurrences(days, hour, minute, now, windowEnd, task));
       }
     } else if (task.repeatType == 2) {
-      // Interval (every N days)
-      // This is trickier with native repeating notifications. 
-      // Native android 'repeat interval' is limited. 
-      // Best approach: Schedule next N occurrences.
-      await _scheduleInterval(task, hour, minute);
-    }
-  }
-
-  Future<void> _scheduleWeekly(RecurringTask task, int dayOfWeek, int hour, int minute) async {
-    final notificationId = _getRecurringNotificationId(task.id!, dayOfWeek); // ID based on TaskID + Day
-    
-    // Calculate first match
-    tz.TZDateTime scheduledDate = _nextInstanceOfWeekday(dayOfWeek, hour, minute);
-
-    // Apply from/to date constraints
-    if (task.fromDate != null && scheduledDate.isBefore(tz.TZDateTime.from(task.fromDate!, tz.local))) {
-       // Find next match that is after fromDate
-       while(scheduledDate.isBefore(tz.TZDateTime.from(task.fromDate!, tz.local))) {
-          scheduledDate = scheduledDate.add(const Duration(days: 7));
-       }
+      // Every N days
+      occurrences.addAll(_getIntervalOccurrences(task, hour, minute, now, windowEnd));
     }
 
-    if (task.toDate != null && scheduledDate.isAfter(tz.TZDateTime.from(task.toDate!, tz.local))) {
-       // If the very first occurrence is after end date, don't schedule
-       return;
-    }
-
-    final now = tz.TZDateTime.now(tz.local);
-    if (scheduledDate.isBefore(now)) {
-       final diff = now.difference(scheduledDate);
-       if (diff.inSeconds < 60 && scheduledDate.year == now.year && scheduledDate.month == now.month && scheduledDate.day == now.day) {
-         scheduledDate = now.add(const Duration(seconds: 5));
-       }
-    }
-
-    try {
-      await _notificationsPlugin.zonedSchedule(
-        notificationId,
-        'Reminder: ${task.title}',
-        task.isPriority ? 'High Priority Task! Check your schedule.' : 'Time to work on this task.',
-        scheduledDate,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            _channelId,
-            _channelName,
-            channelDescription: _channelDescription,
-            importance: Importance.max,
-            priority: Priority.high,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, // Repeats weekly
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+    // Schedule each occurrence as a one-shot exact alarm
+    for (int i = 0; i < occurrences.length && i < _maxSlotsPerTask; i++) {
+      final slotId = _getRecurringSlotId(task.id!, i);
+      await _scheduleOneShot(
+        id: slotId,
+        title: 'Reminder: ${task.title}',
+        body: task.isPriority
+            ? 'High Priority Task! Check your schedule.'
+            : 'Time to work on this task.',
+        scheduledTime: occurrences[i],
       );
-    } catch (e) {
-      debugPrint("Failed to schedule exact alarm for weekly task, falling back to inexact: $e");
-      try {
-        await _notificationsPlugin.zonedSchedule(
-          notificationId,
-          'Reminder: ${task.title}',
-          task.isPriority ? 'High Priority Task! Check your schedule.' : 'Time to work on this task.',
-          scheduledDate,
-          NotificationDetails(
-            android: AndroidNotificationDetails(
-              _channelId,
-              _channelName,
-              channelDescription: _channelDescription,
-              importance: Importance.max,
-              priority: Priority.high,
-            ),
-          ),
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, // Repeats weekly
-          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        );
-      } catch (e2) {
-        debugPrint("Failed to schedule inexact fallback for weekly task: $e2");
-      }
     }
+
+    debugPrint('Scheduled ${occurrences.length} occurrences for task "${task.title}"');
   }
 
-  Future<void> _scheduleInterval(RecurringTask task, int hour, int minute) async {
-     // Scheduling only next 10 instances to strictly follow interval logic without flooding ALARMS
-     // User will open app eventually and we can reschedule, or WorkManager can handle longer term.
-     // For now, schedule upcoming 30 days worth of reminders.
-     if (task.intervalDays == null || task.fromDate == null) return;
-     
-     DateTime startDate = task.fromDate!;
-     // Align start date time
-     DateTime seedDate = DateTime(startDate.year, startDate.month, startDate.day, hour, minute);
-     if (seedDate.isBefore(DateTime.now())) {
-        // Adjust to next interval if already passed? Or start from 'From' date strictly?
-        // Logic: Start from 'From' date, add intervals until > now.
-        while (seedDate.isBefore(DateTime.now())) {
-           seedDate = seedDate.add(Duration(days: task.intervalDays!));
+  List<DateTime> _getWeekdayOccurrences(
+    Set<int> weekdays,
+    int hour,
+    int minute,
+    DateTime now,
+    DateTime windowEnd,
+    RecurringTask task,
+  ) {
+    final List<DateTime> result = [];
+    DateTime cursor = DateTime(now.year, now.month, now.day, hour, minute);
+    // If today's slot has already passed, start from tomorrow
+    if (!cursor.isAfter(now)) {
+      cursor = cursor.add(const Duration(days: 1));
+    }
+
+    while (!cursor.isAfter(windowEnd)) {
+      if (weekdays.contains(cursor.weekday)) {
+        if (_isWithinTaskDateRange(cursor, task)) {
+          result.add(cursor);
         }
-     }
-     
-     tz.TZDateTime scheduledDate = tz.TZDateTime.from(seedDate, tz.local);
-     
-     // Schedule next 10 occurrences
-     for(int i=0; i<10; i++) {
-        if (task.toDate != null && scheduledDate.isAfter(tz.TZDateTime.from(task.toDate!, tz.local))) break;
-        
-        final now = tz.TZDateTime.now(tz.local);
-        if (scheduledDate.isBefore(now)) {
-           final diff = now.difference(scheduledDate);
-           if (diff.inSeconds < 60 && scheduledDate.year == now.year && scheduledDate.month == now.month && scheduledDate.day == now.day) {
-             scheduledDate = now.add(const Duration(seconds: 5));
-           }
-        }
-        
-        final notificationId = _getRecurringIntervalId(task.id!, i);
-        
-        try {
-          await _notificationsPlugin.zonedSchedule(
-            notificationId,
-            'Reminder: ${task.title}',
-            'Recurring task reminder.',
-            scheduledDate,
-            NotificationDetails(
-              android: AndroidNotificationDetails(
-                _channelId,
-                _channelName,
-                channelDescription: _channelDescription,
-                importance: Importance.max,
-                priority: Priority.high,
-              ),
-            ),
-            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-          );
-        } catch (e) {
-          debugPrint("Failed to schedule exact alarm for interval task, falling back to inexact: $e");
-          try {
-            await _notificationsPlugin.zonedSchedule(
-              notificationId,
-              'Reminder: ${task.title}',
-              'Recurring task reminder.',
-              scheduledDate,
-              NotificationDetails(
-                android: AndroidNotificationDetails(
-                  _channelId,
-                  _channelName,
-                  channelDescription: _channelDescription,
-                  importance: Importance.max,
-                  priority: Priority.high,
-                ),
-              ),
-              androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-              uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-            );
-          } catch (e2) {
-            debugPrint("Failed to schedule inexact fallback for interval task: $e2");
-          }
-        }
-        
-        scheduledDate = scheduledDate.add(Duration(days: task.intervalDays!));
-     }
+      }
+      cursor = cursor.add(const Duration(days: 1));
+    }
+    return result;
+  }
+
+  List<DateTime> _getIntervalOccurrences(
+    RecurringTask task,
+    int hour,
+    int minute,
+    DateTime now,
+    DateTime windowEnd,
+  ) {
+    if (task.intervalDays == null || task.intervalDays! <= 0) return [];
+    final List<DateTime> result = [];
+
+    final startBase = task.fromDate ?? now;
+    DateTime cursor = DateTime(startBase.year, startBase.month, startBase.day, hour, minute);
+
+    // Advance past now
+    while (!cursor.isAfter(now)) {
+      cursor = cursor.add(Duration(days: task.intervalDays!));
+    }
+
+    while (!cursor.isAfter(windowEnd)) {
+      if (_isWithinTaskDateRange(cursor, task)) {
+        result.add(cursor);
+      }
+      cursor = cursor.add(Duration(days: task.intervalDays!));
+    }
+    return result;
+  }
+
+  bool _isWithinTaskDateRange(DateTime dt, RecurringTask task) {
+    if (task.fromDate != null && dt.isBefore(task.fromDate!)) return false;
+    if (task.toDate != null && dt.isAfter(
+        DateTime(task.toDate!.year, task.toDate!.month, task.toDate!.day, 23, 59, 59))) {
+      return false;
+    }
+    return true;
   }
 
   Future<void> cancelRecurringTask(RecurringTask task) async {
-    // Determine range of IDs to cancel
     if (task.id == null) return;
-    
-    // Type 0 & 1 (Weekly): IDs 100,000 + TaskID*100 + [1-7]
-    for (int i=1; i<=7; i++) {
-       await _notificationsPlugin.cancel(_getRecurringNotificationId(task.id!, i));
-    }
-    
-    // Type 2 (Interval): IDs 100,000 + TaskID*100 + [0-50] (Safe upper bound)
-    for (int i=0; i<=50; i++) {
-       await _notificationsPlugin.cancel(_getRecurringIntervalId(task.id!, i));
+    for (int i = 0; i < _maxSlotsPerTask; i++) {
+      await _notificationsPlugin.cancel(_getRecurringSlotId(task.id!, i));
     }
   }
 
-  // --- One-Time Task Scheduling ---
+  // ---------------------------------------------------------------------------
+  // One-Time Task Scheduling
+  // ---------------------------------------------------------------------------
 
   Future<void> scheduleOneTimeTask(OneTimeTask task) async {
+    await cancelOneTimeTask(task);
+
     if (!task.isNotificationEnabled || task.deadline == null || task.isCompleted) {
-       await cancelOneTimeTask(task);
-       return;
+      return;
     }
 
-    if (task.notificationTime == null) return; // Need time
-    
+    if (task.notificationTime == null) return;
+
     final timeParts = task.notificationTime!.split(':');
     final int hour = int.parse(timeParts[0]);
     final int minute = int.parse(timeParts[1]);
 
-    // Deadlines
     final deadlineDate = task.deadline!;
     final deadlineTime = DateTime(deadlineDate.year, deadlineDate.month, deadlineDate.day, hour, minute);
 
-    // Schedule on deadline
     if (task.remindInDays == null) {
-       // Standard reminders: 7, 3, 1 days before + On Deadline
-       await _scheduleSingleReminder(task, deadlineTime, 0); // On day
-       await _scheduleSingleReminder(task, deadlineTime.subtract(const Duration(days: 1)), 1);
-       await _scheduleSingleReminder(task, deadlineTime.subtract(const Duration(days: 3)), 3);
-       await _scheduleSingleReminder(task, deadlineTime.subtract(const Duration(days: 7)), 7);
+      // Standard reminders: 7, 3, 1 days before + on deadline
+      await _scheduleSingleReminder(task, deadlineTime, 0);
+      await _scheduleSingleReminder(task, deadlineTime.subtract(const Duration(days: 1)), 1);
+      await _scheduleSingleReminder(task, deadlineTime.subtract(const Duration(days: 3)), 3);
+      await _scheduleSingleReminder(task, deadlineTime.subtract(const Duration(days: 7)), 7);
     } else {
-       // Custom reminder
-       await _scheduleSingleReminder(task, deadlineTime, 0); // Always remind on deadline? Prompt implies "remind in given days", could mean ONLY then or deadline also.
-       // "if remind in how many days field is empty else remind in given days" -> Likely means replace standard reminders with this one custom reminder.
-       // It also says "Allow notification... remind on deadline if empty" - implying if remindInDays is set, it might be the only reminder OR it's an offset.
-       // "remind in how many days" -> usually "Remind me 2 days before".
-       // Let's assume deadline + custom offset.
-       await _scheduleSingleReminder(task, deadlineTime.subtract(Duration(days: task.remindInDays!)), task.remindInDays!);
+      await _scheduleSingleReminder(task, deadlineTime, 0);
+      await _scheduleSingleReminder(
+          task, deadlineTime.subtract(Duration(days: task.remindInDays!)), task.remindInDays!);
     }
   }
 
-  Future<void> _scheduleSingleReminder(OneTimeTask task, DateTime scheduledTime, int daysBefore) async {
-     if (scheduledTime.isBefore(DateTime.now())) {
-       final diff = DateTime.now().difference(scheduledTime);
-       if (diff.inSeconds < 60 && scheduledTime.year == DateTime.now().year && scheduledTime.month == DateTime.now().month && scheduledTime.day == DateTime.now().day) {
-         scheduledTime = DateTime.now().add(const Duration(seconds: 5));
-       } else {
-         return; // Don't schedule past
-       }
-     }
+  Future<void> _scheduleSingleReminder(
+      OneTimeTask task, DateTime scheduledTime, int daysBefore) async {
+    if (scheduledTime.isBefore(DateTime.now())) return; // Skip past reminders
 
-     final notificationId = _getOneTimeNotificationId(task.id!, daysBefore);
+    final notificationId = _getOneTimeNotificationId(task.id!, daysBefore);
+    final body = daysBefore == 0 ? 'Deadline is today!' : 'Deadline in $daysBefore days.';
 
-     String body = daysBefore == 0 
-        ? 'Deadline is today!' 
-        : 'Deadline in $daysBefore days.';
-
-     try {
-       await _notificationsPlugin.zonedSchedule(
-          notificationId,
-          'Task Deadline: ${task.title}',
-          body,
-          tz.TZDateTime.from(scheduledTime, tz.local),
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              _channelId,
-              _channelName,
-              channelDescription: _channelDescription,
-              importance: Importance.max,
-              priority: Priority.high,
-            ),
-          ),
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-       );
-     } catch (e) {
-       debugPrint("Failed to schedule exact alarm for single reminder, falling back to inexact: $e");
-       try {
-         await _notificationsPlugin.zonedSchedule(
-            notificationId,
-            'Task Deadline: ${task.title}',
-            body,
-            tz.TZDateTime.from(scheduledTime, tz.local),
-            const NotificationDetails(
-              android: AndroidNotificationDetails(
-                _channelId,
-                _channelName,
-                channelDescription: _channelDescription,
-                importance: Importance.max,
-                priority: Priority.high,
-              ),
-            ),
-            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-            uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-         );
-       } catch (e2) {
-         debugPrint("Failed to schedule inexact fallback for single reminder: $e2");
-       }
-     }
+    await _scheduleOneShot(
+      id: notificationId,
+      title: 'Task Deadline: ${task.title}',
+      body: body,
+      scheduledTime: scheduledTime,
+    );
   }
 
   Future<void> cancelOneTimeTask(OneTimeTask task) async {
-     if (task.id == null) return;
-     // Cancel potential offsets: 0, 1, 3, 7, and custom (safe range 0-365?)
-    // This is hard because custom offset could be anything.
-    // Better strategy: We can't easily guess custom offset ID if not stored.
-    // However, since ID is deterministic based on daysBefore, if we know remindInDays we can cancel it.
-    
-    // Standard
+    if (task.id == null) return;
     await _notificationsPlugin.cancel(_getOneTimeNotificationId(task.id!, 0));
     await _notificationsPlugin.cancel(_getOneTimeNotificationId(task.id!, 1));
     await _notificationsPlugin.cancel(_getOneTimeNotificationId(task.id!, 3));
     await _notificationsPlugin.cancel(_getOneTimeNotificationId(task.id!, 7));
-    
-    // Custom
     if (task.remindInDays != null) {
-       await _notificationsPlugin.cancel(_getOneTimeNotificationId(task.id!, task.remindInDays!));
+      await _notificationsPlugin.cancel(_getOneTimeNotificationId(task.id!, task.remindInDays!));
     }
   }
 
-  // --- ID Management ---
-  // Large offsets to avoid colliding with Attendance (100-200 range)
-  
-  int _getRecurringNotificationId(int taskId, int subId) {
-     // Range: 100,000 + ...
-     return 100000 + (taskId * 100) + subId;
-  }
-  
-  int _getRecurringIntervalId(int taskId, int index) {
-     return 100000 + (taskId * 100) + 50 + index; 
-  }
+  // ---------------------------------------------------------------------------
+  // Core one-shot scheduler (no repeating match components)
+  // ---------------------------------------------------------------------------
 
-  int _getOneTimeNotificationId(int taskId, int daysBefore) {
-     // Range: 200,000 + ...
-     // daysBefore is offset.
-     return 200000 + (taskId * 1000) + daysBefore;
-  }
+  Future<void> _scheduleOneShot({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledTime,
+  }) async {
+    final tzTime = tz.TZDateTime.from(scheduledTime, tz.local);
+    final now = tz.TZDateTime.now(tz.local);
 
-  // --- Helper Date Logic ---
-  tz.TZDateTime _nextInstanceOfWeekday(int weekday, int hour, int minute) {
-    tz.TZDateTime scheduledDate = _nextInstanceOfTime(hour, minute);
-    while (scheduledDate.weekday != weekday) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
-    return scheduledDate;
-  }
+    // Safety: never schedule in the past
+    if (tzTime.isBefore(now)) return;
 
-  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
-    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime scheduledDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      hour,
-      minute,
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        _channelName,
+        channelDescription: _channelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        playSound: true,
+        enableVibration: true,
+      ),
     );
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tzTime,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint('Exact alarm failed (id=$id): $e. Falling back to inexact.');
+      try {
+        await _notificationsPlugin.zonedSchedule(
+          id,
+          title,
+          body,
+          tzTime,
+          details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+        );
+      } catch (e2) {
+        debugPrint('Inexact alarm also failed (id=$id): $e2');
+      }
     }
-    return scheduledDate;
+  }
+
+  // ---------------------------------------------------------------------------
+  // ID Management
+  // ---------------------------------------------------------------------------
+
+  /// Recurring slot: 100,000 + taskId*100 + slotIndex (0–59)
+  int _getRecurringSlotId(int taskId, int slotIndex) {
+    return 100000 + (taskId * 100) + slotIndex;
+  }
+
+  /// One-time: 200,000 + taskId*1000 + daysBefore
+  int _getOneTimeNotificationId(int taskId, int daysBefore) {
+    return 200000 + (taskId * 1000) + daysBefore;
   }
 }

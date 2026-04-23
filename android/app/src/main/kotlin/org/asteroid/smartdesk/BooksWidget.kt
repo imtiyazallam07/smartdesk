@@ -11,6 +11,16 @@ import es.antonborri.home_widget.HomeWidgetLaunchIntent
 
 class BooksWidget : AppWidgetProvider() {
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == "es.antonborri.home_widget.action.UPDATE_WIDGET") {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val componentName = android.content.ComponentName(context, BooksWidget::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            onUpdate(context, appWidgetManager, appWidgetIds)
+        }
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,

@@ -103,6 +103,13 @@ class TimetableWidget : AppWidgetProvider() {
             }
             // Re-schedule for the next midnight
             scheduleMidnightAlarm(context)
+        } else if (intent.action == "es.antonborri.home_widget.action.UPDATE_WIDGET") {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val componentName = ComponentName(context, TimetableWidget::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            for (id in appWidgetIds) {
+                updateTimetableWidget(context, appWidgetManager, id)
+            }
         }
     }
 

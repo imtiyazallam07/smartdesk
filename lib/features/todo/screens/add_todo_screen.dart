@@ -367,7 +367,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> with SingleTickerProvider
               final date = await showDatePicker(
                 context: context,
                 initialDate: _fromDate ?? DateTime.now(),
-                firstDate: DateTime.now(),
+                firstDate: DateTime(2000),
                 lastDate: DateTime(2030),
               );
               if (date != null) setState(() => _fromDate = date);
@@ -381,7 +381,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> with SingleTickerProvider
               final date = await showDatePicker(
                 context: context,
                 initialDate: _toDate ?? DateTime.now().add(const Duration(days: 30)),
-                firstDate: DateTime.now(),
+                firstDate: DateTime(2000),
                 lastDate: DateTime(2030),
               );
               if (date != null) setState(() => _toDate = date);
@@ -413,7 +413,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> with SingleTickerProvider
               final date = await showDatePicker(
                 context: context,
                 initialDate: _deadline ?? DateTime.now(),
-                firstDate: DateTime.now(),
+                firstDate: DateTime(2000),
                 lastDate: DateTime(2030),
               );
               if (date != null) setState(() => _deadline = date);
