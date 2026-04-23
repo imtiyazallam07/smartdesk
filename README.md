@@ -99,9 +99,9 @@ Stay updated with official college events.
 
 | Home | Timetable | Library Tracker | To-Do List | Export Timetable |
 |:---:|:---:|:---:|:---:|:---:|
-| <img src="screenshots/Home.png"> | <img src="screenshots/Timetable.png"> | <img src="screenshots/Library.png"> | <img src="screenshots/Todo.png"> | <img src="screenshots/ExportTimetable.jpg">
+| <img src="screenshots/Home.jpg"> | <img src="screenshots/Timetable.jpg> | <img src="screenshots/Library.jpg"> | <img src="screenshots/Todo.jpg"> | <img src="screenshots/ExportTimetable.jpg">
 
 | Academic Calendar | Attendance | Curriculum | Calendar| Attendance Analytics|
 |:---:|:---:|:---:|:---:|:---:|
-| <img src="screenshots/AcademicCal.png"> |<img src="screenshots/Attendance.jpg"> |<img src="screenshots/Curriculum.png"> | <img src="screenshots/Calendar.png"> | <img src="screenshots/Analytics.jpg">
+| <img src="screenshots/AcademicCal.jpg"> |<img src="screenshots/Attendance.jpg"> |<img src="screenshots/Curriculum.jpg"> | <img src="screenshots/Calendar.jpg"> | <img src="screenshots/Analytics.jpg">
 
