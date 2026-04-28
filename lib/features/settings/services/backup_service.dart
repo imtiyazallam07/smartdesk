@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter/material.dart';
@@ -94,11 +95,13 @@ class BackupService {
       // Request permissions before opening picker
       await _requestStoragePermissions();
 
+      final String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+
       // Use saveFile which presents a proper save dialog (ACTION_CREATE_DOCUMENT)
       // instead of getDirectoryPath which uses SAF tree picker and restricts many folders
       String? savedPath = await FilePicker.saveFile(
         dialogTitle: 'Save SmartDesk Backup',
-        fileName: 'SmartDesk_Backup.sdb',
+        fileName: 'SmartDesk_Backup_$timestamp.sdb',
         type: FileType.any,
         bytes: bytes,
       );
@@ -109,9 +112,9 @@ class BackupService {
 
       // On some platforms, saveFile with bytes writes directly.
       // On others, it just returns the path and we need to write.
-      final savedFile = File(savedPath);
-      if (!await savedFile.exists() || await savedFile.length() == 0) {
-        await savedFile.writeAsBytes(bytes);
+      final finalFile = File(savedPath);
+      if (!await finalFile.exists() || await finalFile.length() == 0) {
+        await finalFile.writeAsBytes(bytes);
       }
 
       return true;
@@ -134,8 +137,10 @@ class BackupService {
 
       if (result != null && result.files.single.path != null) {
         File backupFile = File(result.files.single.path!);
+        final fileName = result.files.single.name;
 
-        if (!result.files.single.name.endsWith('.sdb')) {
+        // Allow .sdb files and previously incorrectly named files like .sdb (1)
+        if (!fileName.endsWith('.sdb') && !RegExp(r'\.sdb \(\d+\)$').hasMatch(fileName)) {
           throw Exception("Invalid backup file extension.");
         }
 

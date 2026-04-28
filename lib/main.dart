@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'firebase_options.dart';
 
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -52,6 +55,10 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 late AttendanceNotificationService attendanceNotificationService;
 late TodoNotificationService todoNotificationService;
 
+// Firebase Analytics instances
+FirebaseAnalytics? analytics;
+FirebaseAnalyticsObserver? observer;
+
 // -----------------------------------------------------------------------------
 // 1. BACKGROUND WORKER
 // -----------------------------------------------------------------------------
@@ -77,6 +84,17 @@ void callbackDispatcher() {
 // -----------------------------------------------------------------------------
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase (wrapped in try-catch for open-source anonymity)
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    analytics = FirebaseAnalytics.instance;
+    observer = FirebaseAnalyticsObserver(analytics: analytics!);
+  } catch (e) {
+    debugPrint('Firebase initialization failed: $e');
+  }
 
   // 1. INITIALIZE TIMEZONES (DATABASE)
   tz.initializeTimeZones();
@@ -241,6 +259,9 @@ class MyApp extends StatelessWidget {
       builder: (context, themeProvider, child) {
         return MaterialApp(
           navigatorKey: navigatorKey,
+          navigatorObservers: <NavigatorObserver>[
+            if (observer != null) observer!,
+          ],
           debugShowCheckedModeBanner: false,
           title: 'SmartDesk',
           theme: ThemeData(
